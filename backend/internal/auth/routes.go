@@ -1,48 +1,21 @@
 package auth
 
-import (
-	"net/http"
+import "github.com/gin-gonic/gin"
 
-	"github.com/gin-gonic/gin"
-)
-
-// RegisterRoutes sets up authentication, CORS policies, and protected application resources inside Gin
-func RegisterRoutes(router *gin.Engine, handler *Handler, jwtSecret []byte) {
-	// Global CORS Configuration Middleware
-	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // Restrict this in production!
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	})
-
-	// Public Group
-	publicAuth := router.Group("/auth")
+// RegisterRoutes mounts the public auth endpoints and the /users/me profile
+// endpoints onto the versioned API group from docs/api.md.
+func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
+	authGroup := api.Group("/auth")
 	{
-		publicAuth.POST("/register", handler.Register)
-		publicAuth.POST("/login", handler.Login)
-		publicAuth.POST("/verify", handler.Verify)
+		authGroup.POST("/register", h.Register)
+		authGroup.POST("/login", h.Login)
+		authGroup.POST("/verify", h.Verify)
+		authGroup.POST("/logout", h.Logout)
 	}
 
-	// Protected Project Management Group (Requires AuthMiddleware with jwtSecret)
-	projectGroup := router.Group("/projects")
-	projectGroup.Use(AuthMiddleware(jwtSecret))
+	users := api.Group("/users")
 	{
-		// Only Owner and Architect can modify core configurations
-		projectGroup.POST("/blueprints", RequireRoles(RoleOwner, RoleArchitect), func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "Blueprint modified successfully"})
-		})
-
-		// Owners, Architects, Engineers, and Contractors can view things safely
-		projectGroup.GET("/specs", RequireRoles(RoleOwner, RoleArchitect, RoleEngineer, RoleContractor), func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "Project specifications data sheet"})
-		})
+		users.GET("/me", h.Me)
+		users.PUT("/me", h.UpdateMe)
 	}
 }

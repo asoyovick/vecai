@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -17,87 +18,98 @@ const (
 	UserRoleContextKey ContextKey = "user_role"
 )
 
+// SecretFromEnv reads the JWT signing secret from the environment,
+// falling back to a development-only value when unset.
+func SecretFromEnv() []byte {
+	if secret := os.Getenv("JWT_SECRET"); secret != "" {
+		return []byte(secret)
+	}
+	return []byte("vecai-dev-secret-change-me")
+}
+
 // AuthMiddleware validates JWTs and injects user information into the request context.
 func AuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		claims, err := parseBearerToken(c, jwtSecret)
+		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "authorization header is required",
-			})
-			return
-		}
-
-		parts := strings.SplitN(authHeader, " ", 2)
-
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "authorization header must be in the format: Bearer <token>",
-			})
-			return
-		}
-
-		tokenString := parts[1]
-
-		claims := &CustomClaims{}
-
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			if token.Method != jwt.SigningMethodHS256 {
-				return nil, errors.New("unexpected signing method")
-			}
-
-			return jwtSecret, nil
-		})
-
-		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid or expired token",
-			})
-			return
-		}
-
-		if claims.ID == "" || claims.Role == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "token payload is incomplete",
+				"success": false,
+				"error":   err.Error(),
 			})
 			return
 		}
 
 		c.Set(string(UserIDContextKey), claims.ID)
-		c.Set(string(UserRoleContextKey), Role(claims.Role))
+		c.Set(string(UserRoleContextKey), claims.Role)
 
 		c.Next()
 	}
 }
 
+// OptionalAuthMiddleware attaches user identity when a valid token is present
+// but lets anonymous requests through. Endpoints still enforce authentication
+// themselves where it is required.
+func OptionalAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if claims, err := parseBearerToken(c, jwtSecret); err == nil {
+			c.Set(string(UserIDContextKey), claims.ID)
+			c.Set(string(UserRoleContextKey), claims.Role)
+		}
+		c.Next()
+	}
+}
+
+func parseBearerToken(c *gin.Context, jwtSecret []byte) (*CustomClaims, error) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return nil, errors.New("authorization header is required")
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return nil, errors.New("authorization header must be in the format: Bearer <token>")
+	}
+
+	claims := &CustomClaims{}
+	token, err := jwt.ParseWithClaims(parts[1], claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		return nil, errors.New("invalid or expired token")
+	}
+
+	if claims.ID == "" || claims.Role == "" {
+		return nil, errors.New("token payload is incomplete")
+	}
+
+	return claims, nil
+}
+
 // RequireRoles authorizes users based on their assigned roles.
 func RequireRoles(allowedRoles ...Role) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		value, exists := c.Get(string(UserRoleContextKey))
-		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "authentication context missing",
-			})
-			return
-		}
-
-		userRole, ok := value.(Role)
+		role, ok := RoleFromContext(c)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": "failed to resolve user role",
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error":   "authentication context missing",
 			})
 			return
 		}
 
-		for _, role := range allowedRoles {
-			if userRole == role {
+		for _, allowed := range allowedRoles {
+			if role == allowed {
 				c.Next()
 				return
 			}
 		}
 
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-			"error": "access denied",
+			"success": false,
+			"error":   "access denied",
 		})
 	}
 }

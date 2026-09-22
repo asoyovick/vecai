@@ -18,13 +18,14 @@ const (
 	RoleSupplier         Role = "supplier"
 )
 
-// User represents the baseline system model structure stored inside your repository
+// User represents the baseline system model stored in the users table.
 type User struct {
 	ID           string    `json:"id"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"` // Hidden from JSON prints
 	Fullname     string    `json:"fullname"`
 	Role         Role      `json:"role"`
+	Phone        string    `json:"phone,omitempty"`
 	IsVerified   bool      `json:"is_verified"`
 	CreatedAt    time.Time `json:"created_at"`
 }
@@ -38,10 +39,11 @@ type CustomClaims struct {
 
 // Request and Response JSON DTO structures
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Fullname string `json:"fullname"`
-	Role     Role   `json:"role"`
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
+	Fullname string `json:"fullname" binding:"required"`
+	Role     Role   `json:"role" binding:"required"`
+	Phone    string `json:"phone"`
 }
 
 type AuthResponse struct {
@@ -50,8 +52,8 @@ type AuthResponse struct {
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
 
 type VerifyRequest struct {

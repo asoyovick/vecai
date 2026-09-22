@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"vecai/backend/internal/api"
 )
 
 type Handler struct {
@@ -15,76 +17,134 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// Register Handles POST /auth/register
+// Register handles POST /api/v1/auth/register
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON payload"})
+	if !api.BindJSON(c, &req) {
 		return
 	}
 
-	// Still decouple your core rules via validator.go
 	if err := ValidateRegister(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		api.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	resp, err := h.service.Register(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrUserAlreadyExists) {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			api.Fail(c, http.StatusConflict, "an account with this email already exists")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Registration failed"})
+		api.Fail(c, http.StatusInternalServerError, "registration failed")
 		return
 	}
 
-	c.JSON(http.StatusCreated, resp)
+	api.OK(c, http.StatusCreated, "Account created successfully", resp)
 }
 
-// Login Handles POST /auth/login
+// Login handles POST /api/v1/auth/login
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON payload"})
-		return
-	}
-
-	if err := ValidateLogin(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if !api.BindJSON(c, &req) {
 		return
 	}
 
 	resp, err := h.service.Login(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			api.Fail(c, http.StatusUnauthorized, err.Error())
 			return
 		}
 		if errors.Is(err, ErrAccountNotVerified) {
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			api.Fail(c, http.StatusForbidden, err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
+		if isValidationError(err) {
+			api.Fail(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		api.Fail(c, http.StatusInternalServerError, "authentication failed")
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	api.OK(c, http.StatusOK, "Login successful", resp)
 }
 
-// Verify Handles POST /auth/verify
+// Verify handles POST /api/v1/auth/verify
 func (h *Handler) Verify(c *gin.Context) {
 	var req VerifyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON payload"})
+	if !api.BindJSON(c, &req) {
 		return
 	}
 
 	resp, err := h.service.Verify(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		api.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	api.OK(c, http.StatusOK, "Account verified", resp)
+}
+
+// Me handles GET /api/v1/users/me
+func (h *Handler) Me(c *gin.Context) {
+	userID, ok := UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	user, err := h.service.Profile(c.Request.Context(), userID)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			api.Fail(c, http.StatusNotFound, "user not found")
+			return
+		}
+		api.Fail(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	api.OK(c, http.StatusOK, "", user)
+}
+
+// UpdateMe handles PUT /api/v1/users/me
+func (h *Handler) UpdateMe(c *gin.Context) {
+	userID, ok := UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	var req UpdateProfileRequest
+	if !api.BindJSON(c, &req) {
+		return
+	}
+
+	user, err := h.service.UpdateProfile(c.Request.Context(), userID, req.Fullname, req.Phone)
+	if err != nil {
+		if errors.Is(err, ErrFullNameEmpty) {
+			api.Fail(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, ErrUserNotFound) {
+			api.Fail(c, http.StatusNotFound, "user not found")
+			return
+		}
+		api.Fail(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	api.OK(c, http.StatusOK, "Profile updated", user)
+}
+
+// Logout handles POST /api/v1/auth/logout. JWTs are stateless, so the client
+// discards the token; the endpoint exists to keep the API contract symmetric.
+func (h *Handler) Logout(c *gin.Context) {
+	api.OK(c, http.StatusOK, "Logged out", nil)
+}
+
+func isValidationError(err error) bool {
+	return errors.Is(err, ErrInvalidEmail) ||
+		errors.Is(err, ErrPasswordTooWeak) ||
+		errors.Is(err, ErrFullNameEmpty)
 }

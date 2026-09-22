@@ -7,8 +7,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Replace this with a secure string loaded via os.Getenv("JWT_SECRET") in production
-var jwtSecret = []byte("super-secret-construction-platform-key")
+// jwtSecret returns the signing secret shared by token generation and
+// validation. It must match the secret used by the auth middleware, so both
+// go through SecretFromEnv instead of separate hardcoded values.
+func jwtSecret() []byte {
+	return SecretFromEnv()
+}
 
 // GenerateToken wraps user data and metadata into a signed string valid for 24 hours
 func GenerateToken(user User) (string, error) {
@@ -23,7 +27,7 @@ func GenerateToken(user User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(jwtSecret())
 }
 
 // ValidateToken parses the incoming JWT and ensures the cryptographic integrity remains clean
@@ -32,7 +36,7 @@ func ValidateToken(tokenString string) (*CustomClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected token signing algorithm configuration")
 		}
-		return jwtSecret, nil
+		return jwtSecret(), nil
 	})
 
 	if err != nil {

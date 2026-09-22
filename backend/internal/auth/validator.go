@@ -15,26 +15,25 @@ var (
 
 // ValidateRegister checks if the registration inputs conform to our specifications.
 func ValidateRegister(req RegisterRequest) error {
-	// 1. Clean up spacing variables
 	req.Email = strings.TrimSpace(req.Email)
 	req.Fullname = strings.TrimSpace(req.Fullname)
 
-	// 2. Full name check
-	if req.Fullname != "" {
+	// Full name check
+	if req.Fullname == "" {
 		return ErrFullNameEmpty
 	}
 
-	// 3. Email format check via standard library mail engine
+	// Email format check via standard library mail engine
 	if _, err := mail.ParseAddress(req.Email); err != nil {
 		return ErrInvalidEmail
 	}
 
-	// 4. Password string parameter check
+	// Password string parameter check
 	if len(req.Password) < 8 {
 		return ErrPasswordTooWeak
 	}
 
-	// 5. Explicit structural role checking
+	// Explicit structural role checking
 	if !isValidRole(req.Role) {
 		return ErrInvalidRole
 	}
@@ -64,5 +63,5 @@ func isValidRole(role Role) bool {
 		return true
 	default:
 		return false
-	} 
+	}
 }

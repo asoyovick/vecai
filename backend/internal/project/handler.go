@@ -1,9 +1,13 @@
 package project
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"vecai/backend/internal/api"
+	"vecai/backend/internal/auth"
 )
 
 type Handler struct {
@@ -14,12 +18,19 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
-	projects := rg.Group("/projects")
+// RegisterRoutes mounts project endpoints onto the versioned API group.
+func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
+	projects := api.Group("/projects")
 	{
 		projects.POST("", h.CreateProject)
+		projects.GET("", h.ListProjects)
 		projects.GET("/:id", h.GetProjectByID)
-		projects.GET("/owner/:owner_id", h.ListProjectsByOwner)
+		projects.PUT("/:id", h.UpdateProject)
+		projects.DELETE("/:id", h.DeleteProject)
+
+		projects.POST("/:id/members", h.InviteMember)
+		projects.GET("/:id/members", h.GetMembersByProject)
+		projects.DELETE("/:id/members/:memberId", h.RemoveMember)
 
 		projects.POST("/:id/blueprints", h.AddBlueprint)
 		projects.GET("/:id/blueprints", h.GetBlueprintsByProject)
@@ -29,12 +40,26 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	}
 }
 
-// Request payloads
-type CreateProjectRequest struct {
-	OwnerID     string `json:"owner_id" binding:"required"`
+// ---- Request payloads ----
+
+type CreateRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 	Location    string `json:"location"`
+	ClientName  string `json:"client_name"`
+	Status      string `json:"status"`
+	StartDate   string `json:"start_date"`
+	EndDate     string `json:"expected_end_date"`
+}
+
+type UpdateRequest struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	Location    *string `json:"location"`
+	ClientName  *string `json:"client_name"`
+	Status      *string `json:"status"`
+	StartDate   *string `json:"start_date"`
+	EndDate     *string `json:"expected_end_date"`
 }
 
 type AddBlueprintRequest struct {
@@ -50,103 +75,197 @@ type AddSpecRequest struct {
 	SectionCode string `json:"section_code" binding:"required"`
 }
 
-// Handlers
+type InviteMemberRequest struct {
+	UserID string `json:"user_id" binding:"required"`
+	Role   string `json:"role" binding:"required"`
+}
+
+// ---- Handlers ----
+
 func (h *Handler) CreateProject(c *gin.Context) {
-	var req CreateProjectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
 		return
 	}
 
-	project, err := h.service.CreateProject(c.Request.Context(), req.OwnerID, req.Name, req.Description, req.Location)
+	var req CreateRequest
+	if !api.BindJSON(c, &req) {
+		return
+	}
+
+	created, err := h.service.CreateProject(c.Request.Context(), userID, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		h.handleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, project)
+	api.OK(c, http.StatusCreated, "Project created successfully", created)
+}
+
+// ListProjects returns the authenticated user's projects.
+func (h *Handler) ListProjects(c *gin.Context) {
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	projects, err := h.service.ListProjects(c.Request.Context(), userID)
+	if err != nil {
+		api.Fail(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	api.OK(c, http.StatusOK, "", projects)
 }
 
 func (h *Handler) GetProjectByID(c *gin.Context) {
-	id := c.Param("id")
-
-	project, err := h.service.GetProjectByID(c.Request.Context(), id)
+	found, err := h.service.GetProjectByID(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		h.handleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, project)
+	api.OK(c, http.StatusOK, "", found)
 }
 
-func (h *Handler) ListProjectsByOwner(c *gin.Context) {
-	ownerID := c.Param("owner_id")
-
-	projects, err := h.service.ListProjectsByOwner(c.Request.Context(), ownerID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+func (h *Handler) UpdateProject(c *gin.Context) {
+	var req UpdateRequest
+	if !api.BindJSON(c, &req) {
 		return
 	}
 
-	c.JSON(http.StatusOK, projects)
+	updated, err := h.service.UpdateProject(c.Request.Context(), c.Param("id"), req)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	api.OK(c, http.StatusOK, "Project updated successfully", updated)
+}
+
+func (h *Handler) DeleteProject(c *gin.Context) {
+	err := h.service.DeleteProject(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	api.OK(c, http.StatusOK, "Project deleted successfully", nil)
+}
+
+func (h *Handler) InviteMember(c *gin.Context) {
+	var req InviteMemberRequest
+	if !api.BindJSON(c, &req) {
+		return
+	}
+
+	member, err := h.service.InviteMember(c.Request.Context(), c.Param("id"), req)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	api.OK(c, http.StatusCreated, "Team member added", member)
+}
+
+func (h *Handler) GetMembersByProject(c *gin.Context) {
+	members, err := h.service.GetMembersByProject(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		api.Fail(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	api.OK(c, http.StatusOK, "", members)
+}
+
+func (h *Handler) RemoveMember(c *gin.Context) {
+	err := h.service.RemoveMember(c.Request.Context(), c.Param("id"), c.Param("memberId"))
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			api.Fail(c, http.StatusNotFound, err.Error())
+			return
+		}
+		api.Fail(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	api.OK(c, http.StatusOK, "Team member removed", nil)
 }
 
 func (h *Handler) AddBlueprint(c *gin.Context) {
-	projectID := c.Param("id")
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
+		return
+	}
 
 	var req AddBlueprintRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	if !api.BindJSON(c, &req) {
 		return
 	}
 
-	blueprint, err := h.service.AddBlueprint(c.Request.Context(), projectID, req.Title, req.Description, req.FilePath, req.Version)
+	blueprint, err := h.service.AddBlueprint(c.Request.Context(), c.Param("id"), userID, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		h.handleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, blueprint)
+	api.OK(c, http.StatusCreated, "Blueprint added", blueprint)
 }
 
 func (h *Handler) GetBlueprintsByProject(c *gin.Context) {
-	projectID := c.Param("id")
-
-	blueprints, err := h.service.GetBlueprintsByProject(c.Request.Context(), projectID)
+	blueprints, err := h.service.GetBlueprintsByProject(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		api.Fail(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	c.JSON(http.StatusOK, blueprints)
+	api.OK(c, http.StatusOK, "", blueprints)
 }
 
 func (h *Handler) AddSpec(c *gin.Context) {
-	projectID := c.Param("id")
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
+		return
+	}
 
 	var req AddSpecRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	if !api.BindJSON(c, &req) {
 		return
 	}
 
-	spec, err := h.service.AddSpec(c.Request.Context(), projectID, req.Title, req.Description, req.SectionCode)
+	spec, err := h.service.AddSpec(c.Request.Context(), c.Param("id"), userID, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		h.handleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, spec)
+	api.OK(c, http.StatusCreated, "Spec added", spec)
 }
 
 func (h *Handler) GetSpecsByProject(c *gin.Context) {
-	projectID := c.Param("id")
-
-	specs, err := h.service.GetSpecsByProject(c.Request.Context(), projectID)
+	specs, err := h.service.GetSpecsByProject(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		api.Fail(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	c.JSON(http.StatusOK, specs)
+	api.OK(c, http.StatusOK, "", specs)
+}
+
+// handleError maps domain errors onto the HTTP status codes in docs/api.md.
+func (h *Handler) handleError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrProjectNotFound):
+		api.Fail(c, http.StatusNotFound, "project not found")
+	case errors.Is(err, ErrDuplicateProject):
+		api.Fail(c, http.StatusConflict, "user is already a member of this project")
+	case errors.Is(err, ErrInvalidInput):
+		api.Fail(c, http.StatusBadRequest, err.Error())
+	default:
+		api.Fail(c, http.StatusInternalServerError, "internal server error")
+	}
 }

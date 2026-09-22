@@ -2,40 +2,35 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 
+	"vecai/backend/internal/api"
+	"vecai/backend/internal/auth"
+	"vecai/backend/internal/boq"
 	"vecai/backend/internal/db"
-	"vecai/backend/project"
+	"vecai/backend/internal/documents"
+	"vecai/backend/internal/materials"
+	"vecai/backend/internal/newsletter"
+	"vecai/backend/internal/project"
+	"vecai/backend/internal/reports"
 )
 
-type FormRegisterRequest struct {
-	Name     string `form:"name" binding:"required"`
-	Email    string `form:"email" binding:"required,email"`
-	Password string `form:"password" binding:"required"`
-	Role     string `form:"role" binding:"required"`
-}
-
-type FormLoginRequest struct {
-	Email    string `form:"email" binding:"required,email"`
-	Password string `form:"password" binding:"required"`
-}
-
 func main() {
+	port := getEnv("PORT", "8080")
 	dbConnStr := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/vecai?sslmode=disable")
 	migrationsPath := getEnv("MIGRATIONS_PATH", "backend/db/migrations")
-	port := getEnv("PORT", "8080")
+	uploadDir := getEnv("UPLOAD_DIR", "backend/uploads")
+	jwtSecret := auth.SecretFromEnv()
 
 	log.Println("[INIT] Connecting to PostgreSQL...")
 	dbConn, err := db.InitDB(dbConnStr)
@@ -49,148 +44,58 @@ func main() {
 		log.Fatalf("[FATAL] Migration failed: %v", err)
 	}
 
-	// Initialize Project Domain Services
+	// ---- Domain modules (modular monolith, docs/architechture.md) ----
+	userRepo := auth.NewPostgresUserRepository(dbConn)
+	authService := auth.NewService(userRepo)
+	authHandler := auth.NewHandler(authService)
+
 	projectRepo := project.NewPostgresRepository(dbConn)
 	projectService := project.NewService(projectRepo)
 	projectHandler := project.NewHandler(projectService)
 
-	router := gin.Default()
+	materialsRepo := materials.NewPostgresRepository(dbConn)
+	materialsService := materials.NewService(materialsRepo)
+	materialsHandler := materials.NewHandler(materialsService)
+
+	reportsRepo := reports.NewPostgresRepository(dbConn)
+	reportsService := reports.NewService(reportsRepo)
+	reportsHandler := reports.NewHandler(reportsService)
+
+	documentsRepo := documents.NewPostgresRepository(dbConn)
+	documentsService := documents.NewService(documentsRepo, uploadDir)
+	documentsHandler := documents.NewHandler(documentsService)
+
+	boqRepo := boq.NewPostgresRepository(dbConn)
+	boqService := boq.NewService(boqRepo)
+	boqHandler := boq.NewHandler(boqService)
+
+	newsletterRepo := newsletter.NewPostgresRepository(dbConn)
+	newsletterHandler := newsletter.NewHandler(newsletterRepo)
+
+	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(gin.Logger())
+	router.Use(api.CORSMiddleware(allowedOrigins()))
 
-	// Load HTML templates
-	router.LoadHTMLGlob("frontend/*.html")
-
-	// Render Login / Register UI Pages
-	router.GET("/", renderLoginView)
-	router.GET("/login", renderLoginView)
-	router.GET("/register", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "login.html", gin.H{
-			"IsRegister": true,
-		})
-	})
-
-	// Render Home / Dashboard UI Page
-	router.GET("/home", func(c *gin.Context) {
-		ownerID := c.DefaultQuery("owner_id", "dev-user-123")
-		userName := c.DefaultQuery("user_name", "Lead Engineer")
-
-		projects, err := projectService.ListProjectsByOwner(c.Request.Context(), ownerID)
-		if err != nil {
-			log.Printf("[ERROR] Could not fetch projects for dashboard: %v", err)
-			projects = []*project.Project{}
-		}
-
-		c.HTML(http.StatusOK, "home.html", gin.H{
-			"UserName": userName,
-			"OwnerID":  ownerID,
-			"Projects": projects,
-		})
-	})
-
-	// Process Native HTML Form Register
-	router.POST("/register", func(c *gin.Context) {
-		var req FormRegisterRequest
-		if err := c.ShouldBind(&req); err != nil {
-			c.HTML(http.StatusBadRequest, "login.html", gin.H{
-				"Error":      "Invalid registration data. Please check all fields.",
-				"IsRegister": true,
-			})
-			return
-		}
-
-		// Hash user password before storing
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-		if err != nil {
-			c.HTML(http.StatusInternalServerError, "login.html", gin.H{
-				"Error":      "Failed to secure user credentials.",
-				"IsRegister": true,
-			})
-			return
-		}
-
-		// Insert user directly into database
-		query := `
-			INSERT INTO users (id, name, email, password_hash, role, created_at)
-			VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW())
-		`
-		_, err = dbConn.ExecContext(c.Request.Context(), query, req.Name, req.Email, string(hashedPassword), req.Role)
-		if err != nil {
-			log.Printf("[AUTH ERROR] Register failed for %s: %v", req.Email, err)
-			c.HTML(http.StatusConflict, "login.html", gin.H{
-				"Error":      "An account with that email already exists.",
-				"IsRegister": true,
-			})
-			return
-		}
-
-		log.Printf("[AUTH] User Registered Successfully: %s (%s)", req.Name, req.Email)
-
-		// Success! Render login with confirmation
-		c.HTML(http.StatusOK, "login.html", gin.H{
-			"Success":    "Account created successfully! You can now sign in.",
-			"IsRegister": false,
-		})
-	})
-
-	// Process Native HTML Form Login
-	router.POST("/login", func(c *gin.Context) {
-		var req FormLoginRequest
-		if err := c.ShouldBind(&req); err != nil {
-			c.HTML(http.StatusBadRequest, "login.html", gin.H{
-				"Error":      "Please enter a valid email and password.",
-				"IsRegister": false,
-			})
-			return
-		}
-
-		var userID string
-		var name string
-		var storedPasswordHash string
-
-		query := `SELECT id, name, password_hash FROM users WHERE email = $1`
-		err := dbConn.QueryRowContext(c.Request.Context(), query, req.Email).Scan(&userID, &name, &storedPasswordHash)
-
-		if errors.Is(err, sql.ErrNoRows) {
-			c.HTML(http.StatusUnauthorized, "login.html", gin.H{
-				"Error":      "Invalid email or password.",
-				"IsRegister": false,
-			})
-			return
-		} else if err != nil {
-			log.Printf("[AUTH ERROR] Login DB query failed: %v", err)
-			c.HTML(http.StatusInternalServerError, "login.html", gin.H{
-				"Error":      "Authentication system error.",
-				"IsRegister": false,
-			})
-			return
-		}
-
-		// Verify BCrypt Password
-		if err := bcrypt.CompareHashAndPassword([]byte(storedPasswordHash), []byte(req.Password)); err != nil {
-			c.HTML(http.StatusUnauthorized, "login.html", gin.H{
-				"Error":      "Invalid email or password.",
-				"IsRegister": false,
-			})
-			return
-		}
-
-		log.Printf("[AUTH] Login Approved for: %s (ID: %s)", req.Email, userID)
-
-		// Redirect straight to dashboard with query parameters
-		redirectURL := fmt.Sprintf("/home?owner_id=%s&user_name=%s", userID, url.QueryEscape(name))
-		c.Redirect(http.StatusSeeOther, redirectURL)
-	})
-
-	// Health Check
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "time": time.Now().UTC()})
-	})
-
-	// API Routes for JSON clients / integrations
 	apiGroup := router.Group("/api/v1")
-	apiGroup.Use(OptionalAuthMiddleware())
+	apiGroup.Use(auth.OptionalAuthMiddleware(jwtSecret))
+
+	authHandler.RegisterRoutes(apiGroup)
 	projectHandler.RegisterRoutes(apiGroup)
+	materialsHandler.RegisterRoutes(apiGroup)
+	reportsHandler.RegisterRoutes(apiGroup)
+	documentsHandler.RegisterRoutes(apiGroup)
+	boqHandler.RegisterRoutes(apiGroup)
+	newsletterHandler.RegisterRoutes(apiGroup)
+
+	// Protected group for future role-restricted endpoints.
+	adminGroup := apiGroup.Group("")
+	adminGroup.Use(auth.AuthMiddleware(jwtSecret))
+	_ = adminGroup
+
+	router.GET("/health", func(c *gin.Context) {
+		api.OK(c, http.StatusOK, "ok", gin.H{"time": time.Now().UTC()})
+	})
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),
@@ -219,10 +124,15 @@ func main() {
 	log.Println("[SERVER] Exited cleanly.")
 }
 
-func renderLoginView(c *gin.Context) {
-	c.HTML(http.StatusOK, "login.html", gin.H{
-		"IsRegister": false,
-	})
+// allowedOrigins reads CORS origins from the environment so production can
+// lock down access without code changes. Defaults match local development.
+func allowedOrigins() []string {
+	raw := getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080")
+	origins := strings.Split(raw, ",")
+	for i, origin := range origins {
+		origins[i] = strings.TrimSpace(origin)
+	}
+	return origins
 }
 
 func getEnv(key, defaultValue string) string {
@@ -230,15 +140,4 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
-}
-
-func OptionalAuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if gin.Mode() == gin.DebugMode && c.GetHeader("Authorization") == "" {
-			c.Set("userID", "dev-user-123")
-			c.Next()
-			return
-		}
-		c.Next()
-	}
 }

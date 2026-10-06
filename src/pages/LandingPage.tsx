@@ -1,3 +1,4 @@
+import { useState } from "react"
 import {
   HardHat,
   CheckSquare,
@@ -9,7 +10,9 @@ import {
   Shield,
   ArrowRight,
   ChevronRight,
+  Send,
 } from "lucide-react"
+import { subscribeNewsletter } from "../lib/api"
 
 interface Props {
   onGetStarted: () => void
@@ -89,6 +92,21 @@ const roles = [
 ]
 
 export default function LandingPage({ onGetStarted, onSignIn }: Props) {
+  const [newsletterEmail, setNewsletterEmail] = useState("")
+  const [newsletterState, setNewsletterState] = useState<"idle" | "sending" | "done" | "error">("idle")
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newsletterEmail.includes("@") || newsletterState === "sending") return
+    setNewsletterState("sending")
+    try {
+      await subscribeNewsletter(newsletterEmail.trim())
+      setNewsletterState("done")
+      setNewsletterEmail("")
+    } catch {
+      setNewsletterState("error")
+    }
+  }
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Nav */}
@@ -376,7 +394,7 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
 
       {/* Footer */}
       <footer className="bg-slate-900 px-6 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-orange-600">
               <HardHat size={15} color="white" strokeWidth={2} />
@@ -388,6 +406,37 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
               </div>
             </div>
           </div>
+          <form onSubmit={handleSubscribe} className="w-full max-w-md">
+            <label
+              htmlFor="newsletter-email"
+              className="mb-2 block text-xs font-semibold tracking-wide text-slate-300"
+            >
+              Construction insights, monthly
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="newsletter-email"
+                type="email"
+                required
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                placeholder="you@organisation.co.ke"
+                className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-orange-500"
+              />
+              <button
+                type="submit"
+                disabled={newsletterState === "sending"}
+                className="flex shrink-0 items-center gap-1.5 rounded bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-wait disabled:opacity-60"
+              >
+                <Send size={14} aria-hidden="true" />
+                Subscribe
+              </button>
+            </div>
+            <p className="mt-2 min-h-4 text-xs" aria-live="polite">
+              {newsletterState === "done" && <span className="text-emerald-400">Subscribed — check your inbox.</span>}
+              {newsletterState === "error" && <span className="text-red-400">That email could not be subscribed.</span>}
+            </p>
+          </form>
           <p className="text-xs text-slate-500">
             © 2026 Victoria Eagles Construct AI · Nairobi, Kenya
           </p>

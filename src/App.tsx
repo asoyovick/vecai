@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar"
 import Topbar from "./components/Topbar"
 import LandingPage from "./pages/LandingPage"
 import LoginPage from "./pages/LoginPage"
+import RegisterPage from "./pages/RegisterPage"
 import DashboardPage from "./pages/DashboardPage"
 import ProjectsPage from "./pages/ProjectsPage"
 import ProjectDetailPage from "./pages/ProjectDetailPage"
@@ -18,7 +19,7 @@ import SettingsPage from "./pages/SettingsPage"
 import { AuthProvider, useAuth } from "./lib/auth"
 import { LoadingBlock } from "./components/ui"
 
-export type Page = "landing" | "login" | "dashboard" | "projects" | "project-detail" | "tasks" | "materials" | "documents" | "site-update" | "ai-assistant" | "reports" | "team" | "suppliers" | "settings"
+export type Page = "landing" | "login" | "register" | "dashboard" | "projects" | "project-detail" | "tasks" | "materials" | "documents" | "site-update" | "ai-assistant" | "reports" | "team" | "suppliers" | "settings"
 
 export type NavigateFn = (page: Page, projectId?: number) => void
 
@@ -29,6 +30,7 @@ export type NavigateFn = (page: Page, projectId?: number) => void
 function routeFromPath(pathname: string): { page: Page; projectId?: number } {
   if (pathname === "/" || pathname === "") return { page: "landing" }
   if (pathname === "/login") return { page: "login" }
+  if (pathname === "/register") return { page: "register" }
   const projectMatch = pathname.match(/^\/app\/projects\/(\d+)/)
   if (projectMatch) return { page: "project-detail", projectId: Number(projectMatch[1]) }
   if (pathname === "/app/projects" || pathname === "/app/projects/") return { page: "projects" }
@@ -51,6 +53,7 @@ function pathForRoute(page: Page, projectId?: number): string {
   switch (page) {
     case "landing": return "/"
     case "login": return "/login"
+    case "register": return "/register"
     case "dashboard": return "/app"
     case "projects": return "/app/projects"
     case "project-detail": return projectId !== undefined ? `/app/projects/${projectId}` : "/app/projects"
@@ -113,15 +116,28 @@ function Shell() {
   if (page === "landing") {
     return (
       <LandingPage
-        onGetStarted={() => navigate("login")}
+        onGetStarted={() => navigate("register")}
         onSignIn={() => navigate("login")}
       />
     )
   }
 
-  // Login is public; anything under /app requires a session.
+  // Login and registration are public; /app requires a session.
+  if (page === "register") {
+    return (
+      <RegisterPage
+        onBack={() => navigate("landing")}
+        onSignIn={() => navigate("login")}
+      />
+    )
+  }
   if (page === "login" || !user || (isAppPath(window.location.pathname) && !user)) {
-    return <LoginPage onBack={() => navigate("landing")} />
+    return (
+      <LoginPage
+        onBack={() => navigate("landing")}
+        onRegister={() => navigate("register")}
+      />
+    )
   }
 
   return (

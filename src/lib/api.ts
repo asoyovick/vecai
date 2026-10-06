@@ -226,6 +226,7 @@ export const api = {
     }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+  del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 }
 
 export function uploadDocument(
@@ -252,4 +253,39 @@ export function uploadDocument(
       )
     return data as { document: DocumentItem }
   })
+}
+
+export interface BoqItem {
+  id: number
+  project_id: number
+  item_no: string
+  description: string
+  unit: string
+  quantity: number
+  unit_rate: number
+  amount: number
+  created_at: string
+  updated_at: string
+}
+
+export const boqApi = {
+  list: (projectId?: number) =>
+    api.get<{ items: BoqItem[] }>(
+      projectId ? `/api/boq?projectId=${projectId}` : "/api/boq",
+    ),
+  create: (item: {
+    projectId: number
+    itemNo?: string
+    description: string
+    unit?: string
+    quantity: number
+    unitRate: number
+  }) => api.post<{ item: BoqItem }>("/api/boq", item),
+  update: (id: number, item: Partial<Omit<BoqItem, "id" | "project_id" | "created_at" | "updated_at">>) =>
+    api.patch<{ item: BoqItem }>(`/api/boq/${id}`, item),
+  remove: (id: number) => api.del<{ ok: boolean }>(`/api/boq/${id}`),
+}
+
+export function subscribeNewsletter(email: string): Promise<{ subscribed: boolean }> {
+  return api.post<{ subscribed: boolean }>("/api/newsletter/subscribe", { email })
 }

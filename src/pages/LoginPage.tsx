@@ -5,9 +5,10 @@ import { ApiRequestError } from "../lib/api"
 
 interface Props {
   onBack?: () => void
+  onRegister?: () => void
 }
 
-export default function LoginPage({ onBack }: Props) {
+export default function LoginPage({ onBack, onRegister }: Props) {
   const { login } = useAuth()
   const [email, setEmail] = useState("david.ochieng@vecai.co.ke")
   const [password, setPassword] = useState("")
@@ -203,6 +204,18 @@ export default function LoginPage({ onBack }: Props) {
               </code>
             </p>
           </div>
+
+          {onRegister && (
+            <p className="mt-6 text-center text-sm text-slate-500">
+              New to VECAI?{" "}
+              <button
+                onClick={onRegister}
+                className="font-semibold text-slate-900 underline-offset-2 hover:underline"
+              >
+                Create an account
+              </button>
+            </p>
+          )}
 
           <p className="mt-8 text-center text-xs text-slate-400">
             VECAI · Victoria Eagles Construct AI · Nairobi, Kenya

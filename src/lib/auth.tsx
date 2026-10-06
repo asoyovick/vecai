@@ -14,6 +14,7 @@ interface AuthState {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string, jobTitle: string) => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
   setUser: (user: User) => void
@@ -48,6 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserState(data.user)
   }, [])
 
+  const register = useCallback(
+    async (name: string, email: string, password: string, jobTitle: string) => {
+      const data = await api.post<{ user: User }>("/api/auth/register", {
+        name,
+        email,
+        password,
+        jobTitle,
+      })
+      setUserState(data.user)
+    },
+    [],
+  )
+
   const logout = useCallback(async () => {
     try {
       await api.post("/api/auth/logout")
@@ -59,8 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setUser = useCallback((u: User) => setUserState(u), [])
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, refresh, setUser }),
-    [user, loading, login, logout, refresh, setUser],
+    () => ({ user, loading, login, register, logout, refresh, setUser }),
+    [user, loading, login, register, logout, refresh, setUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

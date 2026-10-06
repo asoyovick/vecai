@@ -4,8 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
 import siteConfiguration from './.figma/make/site.json'
-import { vecaiApi } from './server/api'
-// VECAI backend: REST API + SQLite served in-process on the same origin.
+// VECAI REST API is served by the Go server (see cmd/server);
+// the Vite dev/preview server proxies /api to it.
 
 
 // Vite config — https://vitejs.dev/config/
@@ -26,7 +26,6 @@ react(),
       figmaErrorOverlayReplay(),
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
-      vecaiApi(),
     ],
     resolve: {
       alias: {
@@ -37,6 +36,12 @@ react(),
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
+      proxy: {
+        '/api': {
+          target: process.env.VECAI_API_URL || 'http://localhost:8080',
+          changeOrigin: false,
+        },
+      },
       watch: {
         ignored: [
           '**/.figma/**',
@@ -46,6 +51,12 @@ react(),
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
+      proxy: {
+        '/api': {
+          target: process.env.VECAI_API_URL || 'http://localhost:8080',
+          changeOrigin: false,
+        },
+      },
     },
   }
 })

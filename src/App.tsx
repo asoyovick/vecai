@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Sidebar from "./components/Sidebar"
 import Topbar from "./components/Topbar"
 import LandingPage from "./pages/LandingPage"
@@ -22,14 +22,84 @@ export type Page = "landing" | "login" | "dashboard" | "projects" | "project-det
 
 export type NavigateFn = (page: Page, projectId?: number) => void
 
+// ── URL routing ───────────────────────────────────────────────────────────────
+// `/` is the public landing page. `/login` is public too. Authenticated
+// workspace pages live under `/app`.
+
+function routeFromPath(pathname: string): { page: Page; projectId?: number } {
+  if (pathname === "/" || pathname === "") return { page: "landing" }
+  if (pathname === "/login") return { page: "login" }
+  const projectMatch = pathname.match(/^\/app\/projects\/(\d+)/)
+  if (projectMatch) return { page: "project-detail", projectId: Number(projectMatch[1]) }
+  if (pathname === "/app/projects" || pathname === "/app/projects/") return { page: "projects" }
+  if (pathname === "/app/tasks") return { page: "tasks" }
+  if (pathname === "/app/materials") return { page: "materials" }
+  if (pathname === "/app/documents") return { page: "documents" }
+  if (pathname === "/app/site-updates") return { page: "site-update" }
+  if (pathname === "/app/assistant") return { page: "ai-assistant" }
+  if (pathname === "/app/reports") return { page: "reports" }
+  if (pathname === "/app/team") return { page: "team" }
+  if (pathname === "/app/suppliers") return { page: "suppliers" }
+  if (pathname === "/app/settings") return { page: "settings" }
+  if (pathname === "/app" || pathname === "/app/" || pathname.startsWith("/app/")) {
+    return { page: "dashboard" }
+  }
+  return { page: "landing" }
+}
+
+function pathForRoute(page: Page, projectId?: number): string {
+  switch (page) {
+    case "landing": return "/"
+    case "login": return "/login"
+    case "dashboard": return "/app"
+    case "projects": return "/app/projects"
+    case "project-detail": return projectId !== undefined ? `/app/projects/${projectId}` : "/app/projects"
+    case "tasks": return "/app/tasks"
+    case "materials": return "/app/materials"
+    case "documents": return "/app/documents"
+    case "site-update": return "/app/site-updates"
+    case "ai-assistant": return "/app/assistant"
+    case "reports": return "/app/reports"
+    case "team": return "/app/team"
+    case "suppliers": return "/app/suppliers"
+    case "settings": return "/app/settings"
+  }
+}
+
+function isAppPath(pathname: string): boolean {
+  return pathname === "/app" || pathname.startsWith("/app/")
+}
+
 function Shell() {
   const { user, loading, logout } = useAuth()
-  const [page, setPage] = useState<Page>("dashboard")
-  const [selectedProjectId, setSelectedProjectId] = useState<number>(1)
+  const [route, setRoute] = useState(() => routeFromPath(window.location.pathname))
+  const [selectedProjectId, setSelectedProjectId] = useState<number>(
+    () => routeFromPath(window.location.pathname).projectId ?? 1,
+  )
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const page = route.page
 
   // Close the mobile nav whenever the route changes.
   useEffect(() => setMobileNavOpen(false), [page])
+
+  // Browser back/forward.
+  useEffect(() => {
+    const onPop = () => setRoute(routeFromPath(window.location.pathname))
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [])
+
+  const navigate: NavigateFn = useCallback((p, projectId) => {
+    if (projectId !== undefined) setSelectedProjectId(projectId)
+    setRoute({ page: p, projectId })
+    window.history.pushState(null, "", pathForRoute(p, projectId))
+    window.scrollTo(0, 0)
+  }, [])
+
+  // After a successful login, take the user into the app.
+  useEffect(() => {
+    if (user && page === "login") navigate("dashboard")
+  }, [user, page, navigate])
 
   if (loading) {
     return (
@@ -39,23 +109,19 @@ function Shell() {
     )
   }
 
-  const navigate: NavigateFn = (p, projectId) => {
-    if (projectId !== undefined) setSelectedProjectId(projectId)
-    setPage(p)
-    window.scrollTo(0, 0)
-  }
-
+  // Public landing page.
   if (page === "landing") {
     return (
       <LandingPage
-        onGetStarted={() => setPage("login")}
-        onSignIn={() => setPage("login")}
+        onGetStarted={() => navigate("login")}
+        onSignIn={() => navigate("login")}
       />
     )
   }
 
-  if (page === "login" || !user) {
-    return <LoginPage onBack={() => setPage("landing")} />
+  // Login is public; anything under /app requires a session.
+  if (page === "login" || !user || (isAppPath(window.location.pathname) && !user)) {
+    return <LoginPage onBack={() => navigate("landing")} />
   }
 
   return (
@@ -65,7 +131,10 @@ function Shell() {
         onNavigate={navigate}
         mobileOpen={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
-        onSignOut={logout}
+        onSignOut={async () => {
+          await logout()
+          navigate("landing")
+        }}
       />
       <main className="min-w-0 flex-1 overflow-y-auto">
         <Topbar page={page} onOpenNav={() => setMobileNavOpen(true)} />

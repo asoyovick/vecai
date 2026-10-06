@@ -1,4 +1,4 @@
-// Types mirrored from the REST API (server/routes/*).
+// Types mirrored from the REST API (internal/handlers/*).
 
 export type Role = "admin" | "member" | "viewer"
 

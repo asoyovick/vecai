@@ -2,11 +2,15 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 
 	"vecai/internal/api"
@@ -64,8 +68,27 @@ func main() {
 	}
 
 	server := &http.Server{Addr: ":" + cfg.Port, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+
+	// Shut down gracefully on interrupt/terminate so in-flight requests finish.
+	done := make(chan struct{})
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+		<-sig
+		log.Printf("shutting down")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("shutdown: %v", err)
+		}
+		close(done)
+	}()
+
 	log.Printf("vecai api listening on :%s", cfg.Port)
-	log.Fatal(server.ListenAndServe())
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("listen: %v", err)
+	}
+	<-done
 }
 
 // buildApp wires repositories, services and handlers for every domain.

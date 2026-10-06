@@ -542,7 +542,7 @@ function SecurityTab() {
         newPassword: form.newPassword,
       })
       // The API invalidates all sessions on password change; force a fresh sign-in.
-      window.location.href = "/"
+      window.location.href = "/login"
     } catch (err) {
       setError(
         err instanceof ApiRequestError

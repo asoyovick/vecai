@@ -8,9 +8,14 @@ Base URL: same origin (`/api`). All responses are JSON. Errors are
 
 | Method | Path | Description |
 |--------|------|-------------|
+| POST | /api/auth/register | `{name, email, password, jobTitle?}` → `{user}` + cookie (public) |
 | POST | /api/auth/login | `{email, password}` → `{user}` + cookie |
 | POST | /api/auth/logout | destroys the session |
 | GET  | /api/auth/me | current user |
+
+Registration and login validate at the API boundary: unique email,
+valid address, password of 8–200 characters with at least one letter
+and one number. Duplicate emails return `409`.
 
 ## Projects
 
@@ -46,6 +51,15 @@ Base URL: same origin (`/api`). All responses are JSON. Errors are
 | POST | /api/documents | multipart upload `{file, projectId, name, category, version}` (not viewer) |
 | GET  | /api/documents/{id}/download | file download |
 
+## BOQ
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET   | /api/boq?projectId | list items with computed `amount` |
+| POST  | /api/boq | add `{projectId, itemNo?, description, unit?, quantity, unitRate}` (not viewer) |
+| PATCH | /api/boq/{id} | update item fields (not viewer) |
+| DELETE| /api/boq/{id} | remove item (not viewer) |
+
 ## Site updates
 
 | Method | Path | Description |
@@ -53,12 +67,25 @@ Base URL: same origin (`/api`). All responses are JSON. Errors are
 | GET  | /api/site-updates?projectId | list with materials used |
 | POST | /api/site-updates | submit daily report (not viewer) |
 
-## Workspace
+## Reports and intelligence
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET  | /api/dashboard | stats, projects, alerts, deadlines, activity |
 | GET  | /api/activity?projectId | activity feed |
+| POST | /api/assistant | `{question, projectId?}` → computed answer from live data |
+
+## Newsletter
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /api/newsletter/subscribe | `{email}` → `{subscribed}` (public; `409` when already subscribed) |
+
+## Workspace
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET  | /api/team | members + assignments |
 | GET  | /api/team | members + assignments |
 | POST | /api/team/invite | invite member (admin) |
 | GET  | /api/suppliers?category&q | list |

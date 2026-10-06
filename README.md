@@ -12,6 +12,7 @@ materials, documents, daily site reports, budgets and suppliers.
 - **Materials** — stock levels, supplier links and delivery logging.
 - **Documents** — versioned project documents of every category.
 - **Site updates** — structured daily site diaries from the field.
+- **BOQ** — bill-of-quantities line items with computed amounts.
 - **Reports** — weekly status, budget variance and material alerts.
 - **Project intelligence** — a rule-based assistant that answers questions
   from live project data (weekly reports, site summaries, budget variance,
@@ -19,44 +20,62 @@ materials, documents, daily site reports, budgets and suppliers.
 
 ## Architecture
 
-- `src/` — React 19 + Vite + Tailwind CSS v4 frontend
-- `cmd/server` — Go entry point
-- `internal/` — config, database, auth, handlers, middleware, routes
-- `migrations/` — SQL migrations (schema + demo seed)
-- `data/` — runtime SQLite database and uploaded files (git-ignored)
+- `src/` — React 19 + Vite + Tailwind CSS v4 frontend (public landing page,
+  login/register, authenticated workspace under `/app`)
+- `cmd/api` — Go entry point: configuration and dependency wiring only
+- `internal/<domain>/` — domain-oriented backend (auth, project, materials,
+  boq, documents, reports, newsletter); each domain owns its handler,
+  service, repository interface and PostgreSQL implementation
+- `internal/api` — shared HTTP concerns (CORS, JSON responses, guards)
+- `internal/db` — PostgreSQL connection pool and migration runner
+- `db/migrations` — versioned, reversible SQL migrations
+- `db/seed.sql` — demo data, loaded automatically on an empty database
+- `data/` — runtime uploads directory (git-ignored)
 - `docs/` — product and technical documentation
 
 ## Development
 
-The Go server (API on `:8080`) and the Vite dev server (UI on `$PORT`,
-default 8443) run side by side; Vite proxies `/api` to the Go server.
+PostgreSQL 16 and the Vite dev server run side by side; Vite proxies
+`/api` to the Go server.
 
 ```bash
-# Terminal 1 — Go API
-DATABASE_PATH=data/vecai.db go run ./cmd/server
+# Terminal 1 — PostgreSQL (docker)
+docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=vecai -e POSTGRES_DB=vecai postgres:16-alpine
 
-# Terminal 2 — frontend
+# Terminal 2 — Go API
+DATABASE_URL="postgres://postgres:vecai@localhost:5432/vecai?sslmode=disable" go run ./cmd/api
+
+# Terminal 3 — frontend
 pnpm dev
 ```
+
+Open http://localhost:8443. Demo sign-in: `david.ochieng@vecai.co.ke` /
+`demo1234` (all seeded accounts share this password).
 
 ## Production build
 
 ```bash
 pnpm build
-DATABASE_PATH=data/vecai.db STATIC_DIR=dist go run ./cmd/server
+DATABASE_URL="postgres://…" STATIC_DIR=dist go run ./cmd/api
 ```
 
-The Go server then serves both the built frontend and the API on `:8080`.
-
-## Demo credentials
-
-`david.ochieng@vecai.co.ke` / `demo1234` (admin). Seeded accounts share the
-same password; see the login page.
+The Go server then serves both the built frontend (SPA fallback) and the
+API on `:8080`.
 
 ## Testing
 
 ```bash
-go test ./...
-npx tsc --noEmit
-pnpm build
+gofmt -w ./cmd ./internal
+go vet ./...
+go test ./...                      # unit tests
+go test -count=1 ./cmd/...         # API integration tests (need a test database)
 ```
+
+Integration tests use `postgres://postgres:vecai@localhost:5432/vecai_test`
+and recreate its schema on every run.
+
+## Documentation
+
+`docs/` contains the product overview, architecture, database schema,
+API reference and roadmap. See `docs/architecture.md` for the request
+flow through the domain packages.

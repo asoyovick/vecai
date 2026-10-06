@@ -1,0 +1,5 @@
+ALTER TABLE users DROP COLUMN role;
+ALTER TABLE users DROP COLUMN job_title;
+ALTER TABLE users DROP COLUMN initials;
+ALTER TABLE users DROP COLUMN color;
+ALTER TABLE users DROP COLUMN phone;

@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS idx_projects_status;
+ALTER TABLE projects DROP COLUMN status;
+ALTER TABLE projects DROP COLUMN progress;
+ALTER TABLE projects DROP COLUMN start_date;
+ALTER TABLE projects DROP COLUMN expected_completion;
+ALTER TABLE projects DROP COLUMN client;
+ALTER TABLE projects DROP COLUMN contractor;
+ALTER TABLE projects DROP COLUMN budget_total;
+ALTER TABLE projects DROP COLUMN budget_spent;
+ALTER TABLE projects DROP COLUMN description;
+ALTER TABLE projects DROP COLUMN image_url;

@@ -126,7 +126,7 @@ func buildApp(cfg config, database *db.Pool) (http.Handler, error) {
 	boqHandler := boq.NewHandler(boqSvc)
 
 	reportsRepo := reports.NewPostgres(database.DB)
-	reportsSvc := reports.NewService(reportsRepo)
+	reportsSvc := reports.NewService(reportsRepo, projectSvc)
 	reportsHandler := reports.NewHandler(reportsSvc)
 
 	newsletterHandler := newsletter.NewHandler(database.DB)
@@ -144,7 +144,9 @@ func buildApp(cfg config, database *db.Pool) (http.Handler, error) {
 	return api.Recover(api.CORS(api.JSONGuard(auth.Middleware(authSvc)(mux)))), nil
 }
 
-// spaHandler serves the built frontend with SPA fallback.
+// spaHandler serves the built frontend with SPA fallback. index.html is
+// always revalidated (no-cache) so a deployed frontend is never stale:
+// hashed asset filenames keep long-lived caching safe for JS/CSS.
 func spaHandler(staticDir string) http.Handler {
 	fs := http.FileServer(http.Dir(staticDir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -155,10 +157,14 @@ func spaHandler(staticDir string) http.Handler {
 		clean := path.Clean(strings.TrimPrefix(r.URL.Path, "/"))
 		if clean != "." {
 			if info, err := os.Stat(path.Join(staticDir, clean)); err == nil && !info.IsDir() {
+				if strings.HasSuffix(clean, ".html") {
+					w.Header().Set("Cache-Control", "no-cache")
+				}
 				fs.ServeHTTP(w, r)
 				return
 			}
 		}
+		w.Header().Set("Cache-Control", "no-cache")
 		http.ServeFile(w, r, path.Join(staticDir, "index.html"))
 	})
 }

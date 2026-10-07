@@ -11,7 +11,7 @@ CREATE TABLE organisation (
   name          TEXT NOT NULL,
   business_type TEXT NOT NULL DEFAULT 'Construction Company',
   country       TEXT NOT NULL DEFAULT 'Kenya',
-  currency      TEXT NOT NULL DEFAULT 'KES — Kenyan Shilling'
+  currency      TEXT NOT NULL DEFAULT 'KES (Kenyan Shilling)'
 );
 
 CREATE TABLE material_deliveries (

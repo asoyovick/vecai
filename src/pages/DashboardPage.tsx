@@ -27,6 +27,39 @@ interface Props {
   onNavigate: NavigateFn
 }
 
+// Normalise the API payload so a partially-formed response (missing stats,
+// null stats, missing arrays) degrades to zeros/empty lists instead of
+// crashing the page. Backend errors still surface through `error`.
+function normalizeDashboard(raw: unknown): DashboardData {
+  const d = (raw ?? {}) as Partial<DashboardData>
+  const stats = (d.stats ?? {}) as Partial<DashboardData["stats"]>
+  return {
+    stats: {
+      active_projects: stats.active_projects ?? 0,
+      tasks_due: stats.tasks_due ?? 0,
+      blocked_tasks: stats.blocked_tasks ?? 0,
+      material_alerts: stats.material_alerts ?? 0,
+    },
+    projects: (d.projects ?? []).map((p) => ({
+      ...p,
+      team: p.team ?? [],
+      stats:
+        p.stats ??
+        ({
+          tasksTotal: 0,
+          tasksCompleted: 0,
+          tasksDueThisWeek: 0,
+          tasksBlocked: 0,
+          materialsAlert: 0,
+          documentsRecent: 0,
+        } satisfies DashboardData["projects"][number]["stats"]),
+    })),
+    materialAlerts: d.materialAlerts ?? [],
+    deadlines: d.deadlines ?? [],
+    activity: d.activity ?? [],
+  }
+}
+
 function ActivityIcon({ type }: { type: string }) {
   const props = { size: 14, strokeWidth: 1.8 }
   const icons: Record<string, React.ReactNode> = {
@@ -57,8 +90,9 @@ export default function DashboardPage({ onNavigate }: Props) {
     setLoading(true)
     setError("")
     try {
-      setData(await api.get<DashboardData>("/api/dashboard"))
+      setData(normalizeDashboard(await api.get<DashboardData>("/api/dashboard")))
     } catch (err) {
+      setData(null)
       setError(
         err instanceof Error ? err.message : "Could not load the dashboard.",
       )

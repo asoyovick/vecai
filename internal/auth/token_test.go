@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -26,12 +27,22 @@ func TestTokenHashIsStableAndSHA256(t *testing.T) {
 }
 
 func TestSessionCookieHeaders(t *testing.T) {
-	set := SessionCookieHeader("abc", time.Now().Add(sessionTTL))
+	r := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	set := SessionCookieHeader(r, "abc", time.Now().Add(sessionTTL))
 	if set.Name != SessionCookie {
 		t.Fatalf("cookie name = %q", set.Name)
 	}
 	if !set.HttpOnly {
 		t.Fatal("session cookie must be HttpOnly")
+	}
+	if set.Secure {
+		t.Fatal("session cookie must not be Secure for a plain-HTTP request")
+	}
+	secureReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	secureReq.Header.Set("X-Forwarded-Proto", "https")
+	secureSet := SessionCookieHeader(secureReq, "abc", time.Now().Add(sessionTTL))
+	if !secureSet.Secure {
+		t.Fatal("session cookie must be Secure when X-Forwarded-Proto is https")
 	}
 	clear := ClearSessionCookieHeader()
 	if clear.MaxAge != -1 {

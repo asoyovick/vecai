@@ -3,7 +3,6 @@ package auth
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	"vecai/internal/api"
 )
@@ -35,7 +34,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, 401, "Incorrect email or password.")
 		return
 	}
-	http.SetCookie(w, SessionCookieHeader(token, time.Now().Add(sessionTTL)))
+	SetSessionCookie(w, r, token)
 	api.JSON(w, 200, map[string]any{"user": u})
 }
 
@@ -70,7 +69,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	http.SetCookie(w, SessionCookieHeader(token, time.Now().Add(sessionTTL)))
+	SetSessionCookie(w, r, token)
 	api.JSON(w, 201, map[string]any{"user": u})
 }
 

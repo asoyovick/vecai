@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"vecai/internal/api"
 )
 
 const (
@@ -29,15 +31,25 @@ func newToken() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-// SessionCookieHeader builds the cookie set at login.
-func SessionCookieHeader(token string, expiresAtTime time.Time) *http.Cookie {
+// SessionCookieHeader builds the cookie set at login. The cookie is marked
+// Secure when the request arrived over TLS (directly or via
+// X-Forwarded-Proto) so it is likewise never sent over plain HTTP in
+// production.
+func SessionCookieHeader(r *http.Request, token string, expiresAtTime time.Time) *http.Cookie {
 	return &http.Cookie{
 		Name: SessionCookie, Value: token, Path: "/",
 		Expires: expiresAtTime, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+		Secure: api.IsSecureRequest(r),
 	}
 }
 
 // ClearSessionCookieHeader clears the cookie.
 func ClearSessionCookieHeader() *http.Cookie {
 	return &http.Cookie{Name: SessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode}
+}
+
+// SetSessionCookie attaches the session cookie to the response, matching the
+// request's security context.
+func SetSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
+	http.SetCookie(w, SessionCookieHeader(r, token, time.Now().Add(sessionTTL)))
 }

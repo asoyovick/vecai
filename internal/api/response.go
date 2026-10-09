@@ -62,7 +62,7 @@ func HandleDecodeError(w http.ResponseWriter, err error) bool {
 	return true
 }
 
-// Mutations must arrive as JSON or multipart — a lightweight CSRF guard.
+// Mutations must arrive as JSON or multipart, a lightweight CSRF guard.
 func JSONGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -79,6 +79,15 @@ func JSONGuard(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// IsSecureRequest reports whether the request arrived over TLS, directly or
+// through a proxy that set X-Forwarded-Proto.
+func IsSecureRequest(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 // Recover converts panics into 500s instead of dropped connections.

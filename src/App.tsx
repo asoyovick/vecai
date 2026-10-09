@@ -32,8 +32,10 @@ function routeFromPath(pathname: string): { page: Page; projectId?: number } {
   if (pathname === "/login") return { page: "login" }
   if (pathname === "/register") return { page: "register" }
   const projectMatch = pathname.match(/^\/app\/projects\/(\d+)/)
-  if (projectMatch) return { page: "project-detail", projectId: Number(projectMatch[1]) }
-  if (pathname === "/app/projects" || pathname === "/app/projects/") return { page: "projects" }
+  if (projectMatch)
+    return { page: "project-detail", projectId: Number(projectMatch[1]) }
+  if (pathname === "/app/projects" || pathname === "/app/projects/")
+    return { page: "projects" }
   if (pathname === "/app/tasks") return { page: "tasks" }
   if (pathname === "/app/materials") return { page: "materials" }
   if (pathname === "/app/documents") return { page: "documents" }
@@ -43,7 +45,11 @@ function routeFromPath(pathname: string): { page: Page; projectId?: number } {
   if (pathname === "/app/team") return { page: "team" }
   if (pathname === "/app/suppliers") return { page: "suppliers" }
   if (pathname === "/app/settings") return { page: "settings" }
-  if (pathname === "/app" || pathname === "/app/" || pathname.startsWith("/app/")) {
+  if (
+    pathname === "/app" ||
+    pathname === "/app/" ||
+    pathname.startsWith("/app/")
+  ) {
     return { page: "dashboard" }
   }
   return { page: "landing" }
@@ -51,21 +57,38 @@ function routeFromPath(pathname: string): { page: Page; projectId?: number } {
 
 function pathForRoute(page: Page, projectId?: number): string {
   switch (page) {
-    case "landing": return "/"
-    case "login": return "/login"
-    case "register": return "/register"
-    case "dashboard": return "/app"
-    case "projects": return "/app/projects"
-    case "project-detail": return projectId !== undefined ? `/app/projects/${projectId}` : "/app/projects"
-    case "tasks": return "/app/tasks"
-    case "materials": return "/app/materials"
-    case "documents": return "/app/documents"
-    case "site-update": return "/app/site-updates"
-    case "ai-assistant": return "/app/assistant"
-    case "reports": return "/app/reports"
-    case "team": return "/app/team"
-    case "suppliers": return "/app/suppliers"
-    case "settings": return "/app/settings"
+    case "landing":
+      return "/"
+    case "login":
+      return "/login"
+    case "register":
+      return "/register"
+    case "dashboard":
+      return "/app"
+    case "projects":
+      return "/app/projects"
+    case "project-detail":
+      return projectId !== undefined
+        ? `/app/projects/${projectId}`
+        : "/app/projects"
+    case "tasks":
+      return "/app/tasks"
+    case "materials":
+      return "/app/materials"
+    case "documents":
+      return "/app/documents"
+    case "site-update":
+      return "/app/site-updates"
+    case "ai-assistant":
+      return "/app/assistant"
+    case "reports":
+      return "/app/reports"
+    case "team":
+      return "/app/team"
+    case "suppliers":
+      return "/app/suppliers"
+    case "settings":
+      return "/app/settings"
   }
 }
 
@@ -75,7 +98,9 @@ function isAppPath(pathname: string): boolean {
 
 function Shell() {
   const { user, loading, logout } = useAuth()
-  const [route, setRoute] = useState(() => routeFromPath(window.location.pathname))
+  const [route, setRoute] = useState(() =>
+    routeFromPath(window.location.pathname),
+  )
   const [selectedProjectId, setSelectedProjectId] = useState<number>(
     () => routeFromPath(window.location.pathname).projectId ?? 1,
   )
@@ -99,9 +124,9 @@ function Shell() {
     window.scrollTo(0, 0)
   }, [])
 
-  // After a successful login, take the user into the app.
+  // After a successful login or registration, take the user into the app.
   useEffect(() => {
-    if (user && page === "login") navigate("dashboard")
+    if (user && (page === "login" || page === "register")) navigate("dashboard")
   }, [user, page, navigate])
 
   if (loading) {
@@ -131,7 +156,11 @@ function Shell() {
       />
     )
   }
-  if (page === "login" || !user || (isAppPath(window.location.pathname) && !user)) {
+  if (
+    page === "login" ||
+    !user ||
+    (isAppPath(window.location.pathname) && !user)
+  ) {
     return (
       <LoginPage
         onBack={() => navigate("landing")}

@@ -10,15 +10,19 @@ import (
 
 	"vecai/internal/api"
 	"vecai/internal/auth"
+	"vecai/internal/project"
 )
 
 // Service contains the dashboard, activity, daily report and
 // intelligence business logic.
 type Service struct {
-	repo Repository
+	repo     Repository
+	projects *project.Service
 }
 
-func NewService(repo Repository) *Service { return &Service{repo: repo} }
+func NewService(repo Repository, projects *project.Service) *Service {
+	return &Service{repo: repo, projects: projects}
+}
 
 // Dashboard assembles the workspace overview payload.
 func (s *Service) Dashboard() (map[string]any, error) {
@@ -55,7 +59,13 @@ func (s *Service) Dashboard() (map[string]any, error) {
 	if activity == nil {
 		activity = []map[string]any{}
 	}
-	return map[string]any{"stats": stats, "projects": projects, "materialAlerts": materialAlerts, "deadlines": deadlines, "activity": activity}, nil
+	// Return projects in the same enriched shape as /api/projects so the
+	// frontend sees camelCase fields plus stats and team on every card.
+	enriched := []map[string]any{}
+	for _, row := range projects {
+		enriched = append(enriched, s.projects.MapProject(row))
+	}
+	return map[string]any{"stats": stats, "projects": enriched, "materialAlerts": materialAlerts, "deadlines": deadlines, "activity": activity}, nil
 }
 
 // Activity returns the recent audit feed.
@@ -142,7 +152,7 @@ func (s *Service) CreateDailyReport(u *auth.User, input map[string]any) (map[str
 	for _, m := range materials {
 		s.repo.CreateDailyReportMaterial(id, fmt.Sprint(m["name"]), toF(m["quantity"]), fmt.Sprint(m["unit"]))
 	}
-	s.repo.LogActivity(int64(projectID), u.ID, u.Name, "site-update", "Submitted site update for "+name+" — "+*date)
+	s.repo.LogActivity(int64(projectID), u.ID, u.Name, "site-update", "Submitted site update for "+name+" on "+*date)
 	rows, err := s.repo.Query(`SELECT su.*, p.name AS project_name, u.name AS submitted_by_name
 		FROM daily_reports su JOIN projects p ON p.id = su.project_id LEFT JOIN users u ON u.id = su.submitted_by WHERE su.id = $1`, id)
 	if err != nil || len(rows) == 0 {

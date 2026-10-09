@@ -23,7 +23,7 @@ const features = [
   {
     icon: <CheckSquare size={20} strokeWidth={1.8} />,
     title: "Task Management",
-    desc: "Track every task across your projects — from foundation to finishing. List and Kanban views built for construction workflows.",
+    desc: "Track every task across every project, from foundation to finishing. List and Kanban views built for construction workflows.",
     cls: "bg-blue-50 text-blue-700",
   },
   {
@@ -35,7 +35,7 @@ const features = [
   {
     icon: <FileText size={20} strokeWidth={1.8} />,
     title: "Document Control",
-    desc: "Architectural drawings, BOQs, contracts, permits, and site reports — version-controlled and accessible from anywhere.",
+    desc: "Architectural drawings, BOQs, contracts, permits, and site reports, version-controlled and accessible from anywhere.",
     cls: "bg-green-50 text-green-700",
   },
   {
@@ -47,7 +47,7 @@ const features = [
   {
     icon: <HardHat size={20} strokeWidth={1.8} />,
     title: "Digital Site Reports",
-    desc: "Replace paper site diaries with structured daily updates — weather, workers, work completed, and issues logged in minutes.",
+    desc: "Replace paper site diaries with structured daily updates covering weather, workers, work completed, and issues in minutes.",
     cls: "bg-sky-50 text-sky-700",
   },
   {
@@ -61,7 +61,7 @@ const features = [
 const roles = [
   {
     role: "Project Managers",
-    desc: "Full project oversight — schedule, budget, team, and materials — in a single workspace.",
+    desc: "Full project oversight of schedule, budget, team, and materials in a single workspace.",
     icon: Users,
   },
   {
@@ -93,7 +93,8 @@ const roles = [
 
 export default function LandingPage({ onGetStarted, onSignIn }: Props) {
   const [newsletterEmail, setNewsletterEmail] = useState("")
-  const [newsletterState, setNewsletterState] = useState<"idle" | "sending" | "done" | "error">("idle")
+  const [newsletterState, setNewsletterState] =
+    useState<"idle" | "sending" | "done" | "error">("idle")
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -108,16 +109,16 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
     }
   }
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="flex min-h-svh flex-col bg-white text-slate-900">
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-orange-600">
-              <HardHat size={17} color="white" strokeWidth={2} />
+            <div className="flex h-9 w-9 items-center justify-center rounded bg-orange-600">
+              <HardHat size={18} color="white" strokeWidth={2} />
             </div>
             <div>
-              <div className="text-base font-bold leading-none tracking-wide">
+              <div className="text-lg font-bold leading-none tracking-wide">
                 VECAI
               </div>
               <div className="mt-0.5 text-[10px] leading-none tracking-widest text-slate-400">
@@ -128,13 +129,13 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
           <div className="flex items-center gap-3">
             <button
               onClick={onSignIn}
-              className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-500 hover:text-slate-900"
+              className="rounded border border-slate-300 px-4 py-2 text-[15px] font-medium text-slate-700 transition-colors hover:border-slate-500 hover:text-slate-900"
             >
               Sign in
             </button>
             <button
               onClick={onGetStarted}
-              className="hidden items-center gap-1.5 rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-700 sm:flex"
+              className="hidden items-center gap-1.5 rounded bg-slate-900 px-4 py-2 text-[15px] font-semibold text-white transition-colors hover:bg-slate-700 sm:flex"
             >
               View demo <ArrowRight size={14} aria-hidden="true" />
             </button>
@@ -142,8 +143,8 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-slate-900">
+      {/* Hero fills the first viewport */}
+      <section className="relative flex flex-1 items-center overflow-hidden bg-slate-900">
         <img
           src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1800&h=900&fit=crop&auto=format"
           alt=""
@@ -154,34 +155,34 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
           className="absolute inset-x-0 top-0 h-0.5 bg-orange-600"
           aria-hidden="true"
         />
-        <div className="relative mx-auto max-w-6xl px-6 py-24">
-          <div className="max-w-2xl">
-            <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-white sm:text-[2.75rem]">
-              Manage every construction project — from ground-breaking to
+        <div className="relative mx-auto w-full max-w-6xl px-6 py-20 sm:py-24">
+          <div className="max-w-3xl">
+            <h1 className="mb-6 text-[clamp(2.4rem,6vw,4.4rem)] font-bold leading-[1.05] tracking-tight text-white">
+              Manage every construction project from ground-breaking to
               handover.
             </h1>
-            <p className="mb-8 max-w-xl text-[17px] leading-relaxed text-slate-300">
-              VECAI gives Kenyan construction teams — project managers,
-              engineers, QSs, architects, and site managers — one platform to
+            <p className="mb-10 max-w-2xl text-[clamp(1.05rem,1.6vw,1.3rem)] leading-relaxed text-slate-300">
+              VECAI gives Kenyan construction teams, from project managers and
+              engineers to QSs, architects, and site managers, one platform to
               run projects without spreadsheets and paper reports.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={onGetStarted}
-                className="flex items-center gap-2 rounded bg-orange-600 px-6 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-orange-700"
+                className="flex items-center gap-2 rounded bg-orange-600 px-7 py-3.5 text-[16px] font-semibold text-white transition-colors hover:bg-orange-700"
               >
                 View demo <ArrowRight size={16} aria-hidden="true" />
               </button>
               <button
                 onClick={onSignIn}
-                className="rounded border border-white/20 px-6 py-3 text-[15px] font-medium text-white transition-colors hover:bg-white/10"
+                className="rounded border border-white/20 px-7 py-3.5 text-[16px] font-medium text-white transition-colors hover:bg-white/10"
               >
                 Sign in to workspace
               </button>
             </div>
-            <p className="mt-6 text-xs text-slate-400">
-              Live demo environment — real data, real workflows. Sign in with
-              the credentials shown on the login page.
+            <p className="mt-7 text-[15px] text-slate-400">
+              Live demo environment with real data and real workflows. Sign in
+              with the credentials shown on the login page.
             </p>
           </div>
         </div>
@@ -194,10 +195,10 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-orange-700">
               Platform capabilities
             </p>
-            <h2 className="mb-3 text-3xl font-bold tracking-tight">
+            <h2 className="mb-3 text-[clamp(1.75rem,3vw,2.5rem)] font-bold leading-tight tracking-tight">
               Every tool your site team needs, in one platform.
             </h2>
-            <p className="text-[15px] leading-relaxed text-slate-500">
+            <p className="text-[16px] leading-relaxed text-slate-500">
               VECAI replaces the spreadsheets, WhatsApp groups, and paper
               reports that slow construction projects down.
             </p>
@@ -214,8 +215,8 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
                 >
                   {f.icon}
                 </div>
-                <h3 className="mb-2 text-base font-semibold">{f.title}</h3>
-                <p className="text-sm leading-relaxed text-slate-500">
+                <h3 className="mb-2 text-[17px] font-semibold">{f.title}</h3>
+                <p className="text-[15px] leading-relaxed text-slate-500">
                   {f.desc}
                 </p>
               </div>
@@ -231,24 +232,24 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-orange-700">
               Digital site reports
             </p>
-            <h2 className="mb-4 text-3xl font-bold leading-tight tracking-tight">
-              Replace paper site diaries — for good.
+            <h2 className="mb-4 text-[clamp(1.75rem,3vw,2.5rem)] font-bold leading-tight tracking-tight">
+              Replace paper site diaries for good.
             </h2>
-            <p className="mb-6 text-[15px] leading-relaxed text-slate-500">
-              Site managers submit structured daily updates from their phone —
+            <p className="mb-6 text-[16px] leading-relaxed text-slate-500">
+              Site managers submit structured daily updates from their phone,
               recording work completed, materials used, workers on site, weather
-              conditions, and issues — in under five minutes.
+              conditions, and issues in under five minutes.
             </p>
             <ul className="mb-8 space-y-2.5">
               {[
                 "Structured daily site reports submitted from the field",
                 "Materials usage tracked against stock levels",
                 "Issues and delays logged for the whole team to see",
-                "Full audit trail — searchable and filterable",
+                "Full audit trail, searchable and filterable",
               ].map((item) => (
                 <li
                   key={item}
-                  className="flex items-start gap-3 text-sm text-slate-700"
+                  className="flex items-start gap-3 text-[15px] text-slate-700"
                 >
                   <span
                     className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-600"
@@ -260,19 +261,19 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
             </ul>
             <button
               onClick={onGetStarted}
-              className="inline-flex items-center gap-2 rounded bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-2 rounded bg-slate-900 px-5 py-2.5 text-[15px] font-semibold text-white transition-colors hover:bg-slate-700"
             >
               See site updates in action{" "}
               <ChevronRight size={15} aria-hidden="true" />
             </button>
           </div>
 
-          {/* Example report — clearly presented as an example */}
+          {/* Example report, clearly presented as an example */}
           <div className="rounded border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 px-5 py-3.5">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-900">
-                  Site update — 25 Sep 2026
+                <span className="text-[15px] font-semibold text-slate-900">
+                  Site update, 25 Sep 2026
                 </span>
                 <span className="rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
                   Submitted
@@ -304,7 +305,7 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-500">
                   Completed casting of columns C3 and C4 on ground floor.
-                  Formwork struck for beam B1 — concrete quality satisfactory.
+                  Formwork struck for beam B1; concrete quality satisfactory.
                   Backfilling completed on west elevation.
                 </p>
               </div>
@@ -329,7 +330,7 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-orange-700">
               Built for every role
             </p>
-            <h2 className="text-3xl font-bold tracking-tight">
+            <h2 className="text-[clamp(1.75rem,3vw,2.5rem)] font-bold tracking-tight">
               One platform. Every stakeholder.
             </h2>
           </div>
@@ -352,9 +353,9 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
                         strokeWidth={1.8}
                       />
                     </span>
-                    <span className="text-sm font-semibold">{r.role}</span>
+                    <span className="text-[15px] font-semibold">{r.role}</span>
                   </div>
-                  <p className="text-sm leading-relaxed text-slate-500">
+                  <p className="text-[15px] leading-relaxed text-slate-500">
                     {r.desc}
                   </p>
                 </div>
@@ -367,24 +368,24 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
       {/* CTA */}
       <section className="border-t border-slate-100 bg-slate-50 px-6 py-20">
         <div className="mx-auto max-w-xl text-center">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight">
+          <h2 className="mb-4 text-[clamp(1.75rem,3vw,2.5rem)] font-bold tracking-tight">
             Ready to run your construction projects properly?
           </h2>
-          <p className="mb-8 text-[15px] leading-relaxed text-slate-500">
+          <p className="mb-8 text-[16px] leading-relaxed text-slate-500">
             Open the demo workspace or sign in to an existing one. VECAI is
-            built for Kenyan construction teams — from single-site residential
-            to multi-project infrastructure programmes.
+            built for Kenyan construction teams, from single-site residential to
+            multi-project infrastructure programmes.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <button
               onClick={onGetStarted}
-              className="flex items-center gap-2 rounded bg-orange-600 px-6 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-orange-700"
+              className="flex items-center gap-2 rounded bg-orange-600 px-7 py-3.5 text-[16px] font-semibold text-white transition-colors hover:bg-orange-700"
             >
               View demo platform <ArrowRight size={16} aria-hidden="true" />
             </button>
             <button
               onClick={onSignIn}
-              className="rounded border border-slate-300 bg-white px-6 py-3 text-[15px] font-medium text-slate-700 transition-colors hover:border-slate-500"
+              className="rounded border border-slate-300 bg-white px-7 py-3.5 text-[16px] font-medium text-slate-700 transition-colors hover:border-slate-500"
             >
               Sign in
             </button>
@@ -433,8 +434,16 @@ export default function LandingPage({ onGetStarted, onSignIn }: Props) {
               </button>
             </div>
             <p className="mt-2 min-h-4 text-xs" aria-live="polite">
-              {newsletterState === "done" && <span className="text-emerald-400">Subscribed — check your inbox.</span>}
-              {newsletterState === "error" && <span className="text-red-400">That email could not be subscribed.</span>}
+              {newsletterState === "done" && (
+                <span className="text-emerald-400">
+                  Subscribed. Check your inbox.
+                </span>
+              )}
+              {newsletterState === "error" && (
+                <span className="text-red-400">
+                  That email could not be subscribed.
+                </span>
+              )}
             </p>
           </form>
           <p className="text-xs text-slate-500">

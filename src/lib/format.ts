@@ -14,9 +14,9 @@ export function kesShort(n: number): string {
 }
 
 export function fmtDate(d: string | null | undefined): string {
-  if (!d) return "—"
+  if (!d) return "–"
   const date = new Date(d.length === 10 ? d + "T00:00:00" : d)
-  if (Number.isNaN(date.getTime())) return "—"
+  if (Number.isNaN(date.getTime())) return "–"
   return date.toLocaleDateString("en-KE", {
     day: "numeric",
     month: "short",

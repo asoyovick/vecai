@@ -281,11 +281,17 @@ export const boqApi = {
     quantity: number
     unitRate: number
   }) => api.post<{ item: BoqItem }>("/api/boq", item),
-  update: (id: number, item: Partial<Omit<BoqItem, "id" | "project_id" | "created_at" | "updated_at">>) =>
-    api.patch<{ item: BoqItem }>(`/api/boq/${id}`, item),
+  update: (
+    id: number,
+    item: Partial<Omit<BoqItem, "id" | "project_id" | "created_at" | "updated_at">>,
+  ) => api.patch<{ item: BoqItem }>(`/api/boq/${id}`, item),
   remove: (id: number) => api.del<{ ok: boolean }>(`/api/boq/${id}`),
 }
 
-export function subscribeNewsletter(email: string): Promise<{ subscribed: boolean }> {
-  return api.post<{ subscribed: boolean }>("/api/newsletter/subscribe", { email })
+export function subscribeNewsletter(
+  email: string,
+): Promise<{ subscribed: boolean }> {
+  return api.post<{ subscribed: boolean }>("/api/newsletter/subscribe", {
+    email,
+  })
 }

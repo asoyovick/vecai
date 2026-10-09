@@ -345,7 +345,7 @@ export default function ReportsPage(_props: Props) {
                   Select a project
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
-                  Monthly budget data is tracked per project — choose one above.
+                  Monthly budget data is tracked per project. Choose one above.
                 </p>
               </div>
             ) : budgetChart.length === 0 ? (

@@ -598,10 +598,10 @@ export default function MaterialsPage(_props: Props) {
                             <Progress value={pctUsed} className="mt-1" />
                           </td>
                           <td className="max-w-[160px] truncate px-4 py-3 text-xs text-slate-500">
-                            {m.supplier_name ?? "—"}
+                            {m.supplier_name ?? "–"}
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600">
-                            {m.unit_cost ? kes(m.unit_cost) : "—"}
+                            {m.unit_cost ? kes(m.unit_cost) : "–"}
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-500">
                             {fmtDate(m.last_delivery)}

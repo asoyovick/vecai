@@ -38,7 +38,7 @@ export default function LoginPage({ onBack, onRegister }: Props) {
 
   return (
     <div className="flex min-h-screen bg-white">
-      {/* Left panel — brand */}
+      {/* Left panel: brand */}
       <div className="relative hidden w-[420px] shrink-0 flex-col justify-between overflow-hidden bg-slate-900 p-10 lg:flex">
         <img
           src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=960&h=1200&fit=crop&auto=format"
@@ -66,8 +66,8 @@ export default function LoginPage({ onBack, onRegister }: Props) {
             project intelligence.
           </h1>
           <p className="max-w-[320px] text-[15px] leading-relaxed text-slate-400">
-            Manage projects, teams, materials, budgets and documents — all in
-            one place. Built for Kenyan construction professionals.
+            Manage projects, teams, materials, budgets and documents, all in one
+            place. Built for Kenyan construction professionals.
           </p>
         </div>
         <div className="relative">
@@ -92,7 +92,7 @@ export default function LoginPage({ onBack, onRegister }: Props) {
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel: form */}
       <div className="flex flex-1 items-center justify-center p-6 sm:p-8">
         <div className="w-full max-w-[400px]">
           <div className="mb-8 flex items-center justify-between">

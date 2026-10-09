@@ -429,7 +429,7 @@ export default function DocumentsPage(_props: Props) {
                                 {doc.name}
                               </div>
                               <div className="text-xs text-slate-400">
-                                {doc.format || "—"} · {fmtSize(doc.size_bytes)}
+                                {doc.format || "–"} · {fmtSize(doc.size_bytes)}
                               </div>
                             </div>
                           </div>
@@ -440,13 +440,13 @@ export default function DocumentsPage(_props: Props) {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500">
-                          {doc.project_name ?? "—"}
+                          {doc.project_name ?? "–"}
                         </td>
                         <td className="px-4 py-3 text-xs font-medium text-slate-600">
                           {doc.version}
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500">
-                          {doc.uploaded_by_name ?? "—"}
+                          {doc.uploaded_by_name ?? "–"}
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500">
                           {fmtDate(doc.created_at)}

@@ -141,8 +141,8 @@ export default function ProjectDetailPage({ projectId, onNavigate }: Props) {
               {project.name}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Client: {project.client || "—"} · Contractor:{" "}
-              {project.contractor || "—"}
+              Client: {project.client || "–"} · Contractor:{" "}
+              {project.contractor || "–"}
             </p>
           </div>
           <button
@@ -201,8 +201,8 @@ export default function ProjectDetailPage({ projectId, onNavigate }: Props) {
                 </h3>
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                   {[
-                    ["Project owner", project.client || "—"],
-                    ["Main contractor", project.contractor || "—"],
+                    ["Project owner", project.client || "–"],
+                    ["Main contractor", project.contractor || "–"],
                     ["Start date", fmtDate(project.startDate)],
                     [
                       "Expected completion",
@@ -284,7 +284,7 @@ export default function ProjectDetailPage({ projectId, onNavigate }: Props) {
                 <div className="rounded border border-slate-200 bg-white p-5">
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-slate-900">
-                      Budget — planned vs. actual (KES)
+                      Budget: planned vs. actual (KES)
                     </h3>
                   </div>
                   <ResponsiveContainer width="100%" height={180}>
@@ -553,7 +553,7 @@ export default function ProjectDetailPage({ projectId, onNavigate }: Props) {
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
-                        {task.assignee_name ?? "—"}
+                        {task.assignee_name ?? "–"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {fmtDate(task.due_date)}
@@ -658,7 +658,7 @@ export default function ProjectDetailPage({ projectId, onNavigate }: Props) {
                         {m.used_qty.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">
-                        {m.supplier_name ?? "—"}
+                        {m.supplier_name ?? "–"}
                       </td>
                       <td className="px-4 py-3">
                         <MaterialBadge status={m.status} />
@@ -838,7 +838,7 @@ export default function ProjectDetailPage({ projectId, onNavigate }: Props) {
                         {doc.version}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">
-                        {doc.uploaded_by_name ?? "—"}
+                        {doc.uploaded_by_name ?? "–"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">
                         {fmtDate(doc.created_at)}

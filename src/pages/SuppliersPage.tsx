@@ -373,22 +373,22 @@ export default function SuppliersPage(_props: Props) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
-                        {s.contact || "—"}
+                        {s.contact || "–"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">
-                        {s.phone || "—"}
+                        {s.phone || "–"}
                       </td>
                       <td className="px-4 py-3">
                         <span className="flex items-center gap-1 text-xs text-slate-500">
                           <MapPin size={11} aria-hidden="true" />
-                          {s.location || "—"}
+                          {s.location || "–"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <Stars rating={s.rating} />
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">
-                        {s.last_order ?? "—"}
+                        {s.last_order ?? "–"}
                       </td>
                       <td className="px-4 py-3">
                         <span

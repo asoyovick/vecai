@@ -459,7 +459,7 @@ export default function TasksPage(_props: Props) {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500">
-                          {task.project_name ?? "—"}
+                          {task.project_name ?? "–"}
                         </td>
                         <td className="px-4 py-3">
                           {task.assignee_name ? (

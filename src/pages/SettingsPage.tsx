@@ -395,9 +395,9 @@ function OrganisationTab() {
                 disabled={user?.role !== "admin"}
               >
                 {[
-                  "KES — Kenyan Shilling",
-                  "UGX — Ugandan Shilling",
-                  "USD — US Dollar",
+                  "KES (Kenyan Shilling)",
+                  "UGX (Ugandan Shilling)",
+                  "USD (US Dollar)",
                 ].map((c) => (
                   <option key={c}>{c}</option>
                 ))}

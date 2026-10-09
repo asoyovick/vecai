@@ -186,7 +186,7 @@ export default function Sidebar({
               style={{ background: user?.color ?? "#1e3a5f" }}
               aria-hidden="true"
             >
-              {user?.initials ?? "—"}
+              {user?.initials ?? "–"}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium leading-tight text-white">

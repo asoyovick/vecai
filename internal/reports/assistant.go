@@ -102,30 +102,30 @@ func (s *Service) materialsForecast(projectID *int64, now time.Time) assistantAn
 		var lines []assistantLine
 		for _, m := range critical {
 			days := materialDaysLeft(m["available_qty"].(float64), toF(m["used_qty"]), m["start_date"], now)
-			text := fmt.Sprintf("%v (%v) — %s %v remaining", m["name"], m["project_name"], fmtQty(m["available_qty"].(float64)), m["unit"])
+			text := fmt.Sprintf("%v (%v): %s %v remaining", m["name"], m["project_name"], fmtQty(m["available_qty"].(float64)), m["unit"])
 			if days != nil {
 				text += fmt.Sprintf(", roughly %d day%s of supply at the current usage rate", *days, plural(*days))
 			}
 			lines = append(lines, assistantLine{Text: text + ".", Tone: "danger"})
 		}
-		sections = append(sections, assistantSection{Heading: "Critical — reorder immediately", Lines: lines})
+		sections = append(sections, assistantSection{Heading: "Critical: reorder immediately", Lines: lines})
 	}
 	if len(low) > 0 {
 		var lines []assistantLine
 		for _, m := range low {
 			days := materialDaysLeft(m["available_qty"].(float64), toF(m["used_qty"]), m["start_date"], now)
-			text := fmt.Sprintf("%v (%v) — %s of %s %v", m["name"], m["project_name"], fmtQty(m["available_qty"].(float64)), fmtQty(m["required_qty"].(float64)), m["unit"])
+			text := fmt.Sprintf("%v (%v): %s of %s %v", m["name"], m["project_name"], fmtQty(m["available_qty"].(float64)), fmtQty(m["required_qty"].(float64)), m["unit"])
 			if days != nil {
 				text += fmt.Sprintf(", roughly %d days of supply", *days)
 			}
 			lines = append(lines, assistantLine{Text: text + ".", Tone: "warn"})
 		}
-		sections = append(sections, assistantSection{Heading: "Low stock — order within the week", Lines: lines})
+		sections = append(sections, assistantSection{Heading: "Low stock: order within the week", Lines: lines})
 	}
 	if len(ordered) > 0 {
 		var lines []assistantLine
 		for _, m := range ordered {
-			lines = append(lines, assistantLine{Text: fmt.Sprintf("%v (%v) — %s %v expected; not yet consumed on site.", m["name"], m["project_name"], fmtQty(m["available_qty"].(float64)), m["unit"])})
+			lines = append(lines, assistantLine{Text: fmt.Sprintf("%v (%v): %s %v expected, not yet consumed on site.", m["name"], m["project_name"], fmtQty(m["available_qty"].(float64)), m["unit"])})
 		}
 		sections = append(sections, assistantSection{Heading: "On order", Lines: lines})
 	}
@@ -189,28 +189,28 @@ func (s *Service) tasksAtRisk(projectID *int64, now time.Time) assistantAnswer {
 		for _, t := range blocked {
 			text := fmt.Sprintf("%v (%v)", t["name"], t["project_name"])
 			if t["assignee"] != nil {
-				text += " — assigned to " + t["assignee"].(string)
+				text += ", assigned to " + t["assignee"].(string)
 			}
 			if t["due_date"] != nil {
 				text += " · was due " + t["due_date"].(string)
 			}
 			lines = append(lines, assistantLine{Text: text + ".", Tone: "danger"})
 		}
-		sections = append(sections, assistantSection{Heading: "Blocked — needs intervention", Lines: lines})
+		sections = append(sections, assistantSection{Heading: "Blocked: needs intervention", Lines: lines})
 	}
 	if len(overdue) > 0 {
 		var lines []assistantLine
 		for _, t := range overdue {
-			lines = append(lines, assistantLine{Text: fmt.Sprintf("%v (%v) — due %v.", t["name"], t["project_name"], t["due_date"]), Tone: "warn"})
+			lines = append(lines, assistantLine{Text: fmt.Sprintf("%v (%v), due %v.", t["name"], t["project_name"], t["due_date"]), Tone: "warn"})
 		}
 		sections = append(sections, assistantSection{Heading: "Overdue", Lines: lines})
 	}
 	if len(dueSoon) > 0 {
 		var lines []assistantLine
 		for _, t := range dueSoon {
-			lines = append(lines, assistantLine{Text: fmt.Sprintf("%v (%v) — due %v.", t["name"], t["project_name"], t["due_date"])})
+			lines = append(lines, assistantLine{Text: fmt.Sprintf("%v (%v), due %v.", t["name"], t["project_name"], t["due_date"])})
 		}
-		sections = append(sections, assistantSection{Heading: "In progress — due within 7 days", Lines: lines})
+		sections = append(sections, assistantSection{Heading: "In progress, due within 7 days", Lines: lines})
 	}
 	if len(sections) == 0 {
 		sections = append(sections, assistantSection{Lines: []assistantLine{{Text: "No blocked, overdue, or soon-due tasks found.", Tone: "success"}}})
@@ -345,7 +345,7 @@ func (s *Service) siteSummary(projectID *int64) assistantAnswer {
 		if issues, ok := su["issues"].(string); ok && issues != "" {
 			lines = append(lines, assistantLine{Text: "Issues: " + issues, Tone: "warn"})
 		}
-		heading := fmt.Sprintf("%v — %v (submitted by %v)", su["project_name"], su["date"], strOr(su["submitted_by"], "unknown"))
+		heading := fmt.Sprintf("%v, %v (submitted by %v)", su["project_name"], su["date"], strOr(su["submitted_by"], "unknown"))
 		sections = append(sections, assistantSection{Heading: heading, Lines: lines})
 	}
 	return assistantAnswer{
@@ -394,7 +394,7 @@ func (s *Service) weeklyReport(now time.Time) assistantAnswer {
 		if blocked == 0 && overdue == 0 && alerts == 0 {
 			lines = append(lines, assistantLine{Text: "No blocked tasks, overdue items, or stock alerts.", Tone: "success"})
 		}
-		sections = append(sections, assistantSection{Heading: fmt.Sprintf("%v — %v", p["name"], p["location"]), Lines: lines})
+		sections = append(sections, assistantSection{Heading: fmt.Sprintf("%v, %v", p["name"], p["location"]), Lines: lines})
 	}
 	return assistantAnswer{
 		Title:    "Weekly Project Status Report",
@@ -431,12 +431,12 @@ func (s *Service) riskAnalysis(projectID *int64, now time.Time) assistantAnswer 
 	overBudget := a != nil && p != nil && *a > *p
 	lines := []assistantLine{{Text: fmt.Sprintf("Programme: %d%% of the schedule elapsed, %d%% physical progress reported.", elapsedPct, progress)}}
 	if progress < int64(elapsedPct)-10 {
-		lines = append(lines, assistantLine{Text: fmt.Sprintf("Progress is trailing the programme by %d points — the completion date is at risk if the trend continues.", int64(elapsedPct)-progress), Tone: "warn"})
+		lines = append(lines, assistantLine{Text: fmt.Sprintf("Progress is trailing the programme by %d points; the completion date is at risk if the trend continues.", int64(elapsedPct)-progress), Tone: "warn"})
 	} else {
 		lines = append(lines, assistantLine{Text: "Physical progress is broadly in line with the programme.", Tone: "success"})
 	}
 	if criticalMaterials > 0 {
-		lines = append(lines, assistantLine{Text: fmt.Sprintf("%d critical material%s could halt site work — reorder immediately.", criticalMaterials, plural(criticalMaterials)), Tone: "danger"})
+		lines = append(lines, assistantLine{Text: fmt.Sprintf("%d critical material%s could halt site work. Reorder immediately.", criticalMaterials, plural(criticalMaterials)), Tone: "danger"})
 	}
 	if blocked > 0 {
 		lines = append(lines, assistantLine{Text: fmt.Sprintf("%d blocked task%s need management intervention.", blocked, plural(blocked)), Tone: "danger"})
@@ -459,7 +459,7 @@ func (s *Service) riskAnalysis(projectID *int64, now time.Time) assistantAnswer 
 		remaining = 0
 	}
 	return assistantAnswer{
-		Title:    "Risk Analysis — " + fmt.Sprint(project["name"]),
+		Title:    "Risk Analysis: " + fmt.Sprint(project["name"]),
 		Intro:    fmt.Sprintf("Completion date %s · %d days remaining.", expected, remaining),
 		Sections: []assistantSection{{Lines: lines}},
 		Footnote: "Computed from live project data.",

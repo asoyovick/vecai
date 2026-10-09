@@ -115,7 +115,7 @@ export default function SiteUpdatePage({ onNavigate }: Props) {
     setFieldError("")
     if (!form.workCompleted.trim()) {
       setFieldError(
-        "Describe the work completed today — this is the core of the daily record.",
+        "Describe the work completed today; this is the core of the daily record.",
       )
       return
     }
@@ -526,7 +526,7 @@ export default function SiteUpdatePage({ onNavigate }: Props) {
                     <span className="text-slate-500">Project</span>
                     <span className="text-right font-medium text-slate-700">
                       {projects.find((p) => p.id === Number(form.projectId))
-                        ?.name ?? "—"}
+                        ?.name ?? "–"}
                     </span>
                   </div>
                 </div>
@@ -569,7 +569,7 @@ export default function SiteUpdatePage({ onNavigate }: Props) {
                         </div>
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
                           <Cloud size={11} aria-hidden="true" />
-                          {u.weather || "—"} · {u.project_name}
+                          {u.weather || "–"} · {u.project_name}
                         </div>
                       </li>
                     ))}

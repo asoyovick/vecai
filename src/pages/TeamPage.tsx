@@ -162,8 +162,8 @@ function InviteModal({
                   value={form.role}
                   onChange={(e) => set("role", e.target.value)}
                 >
-                  <option value="member">Member — can edit</option>
-                  <option value="viewer">Viewer — read only</option>
+                  <option value="member">Member (can edit)</option>
+                  <option value="viewer">Viewer (read only)</option>
                 </select>
               </div>
             </div>
@@ -314,7 +314,7 @@ export default function TeamPage({ onNavigate }: Props) {
         {inviteResult && (
           <div className="mb-4">
             <SuccessBanner
-              message={`${inviteResult.member.name} added. Temporary password: ${inviteResult.temporaryPassword} — share it securely; it is shown only once.`}
+              message={`${inviteResult.member.name} added. Temporary password: ${inviteResult.temporaryPassword}. Share it securely; it is shown only once.`}
             />
           </div>
         )}
@@ -347,7 +347,7 @@ export default function TeamPage({ onNavigate }: Props) {
                       </div>
                       <div className="mt-1 flex items-center gap-1.5">
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
-                          {m.job_title || "—"}
+                          {m.job_title || "–"}
                         </span>
                         <span
                           className={`rounded px-1.5 py-0.5 text-xs font-medium ${rb.cls}`}

@@ -10,7 +10,7 @@ import (
 var (
 	ErrDocumentNotFound = errors.New("Document not found.")
 	ErrFileUnavailable  = errors.New("The file is no longer available.")
-	ErrRecordOnly       = errors.New("This document was imported as a record only — no file is attached.")
+	ErrRecordOnly       = errors.New("This document was imported as a record only; no file is attached.")
 )
 
 var Categories = []string{"Architectural Drawing", "Structural Drawing", "BOQ", "Contract", "Permit", "Invoice", "Site Report", "Inspection Report", "Photo"}

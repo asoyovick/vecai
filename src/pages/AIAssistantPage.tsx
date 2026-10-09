@@ -183,7 +183,7 @@ export default function AIAssistantPage(_props: Props) {
                     Ask about your projects in plain language. I can summarize
                     site reports, forecast material shortages, list blocked or
                     overdue tasks, analyse budget variance, or compile a weekly
-                    status report — all from the data your team has recorded.
+                    status report, all from the data your team has recorded.
                   </p>
                   <p className="mt-2 text-xs text-slate-400">
                     Start with one of the suggested questions below.
@@ -288,7 +288,7 @@ export default function AIAssistantPage(_props: Props) {
           </div>
           <div className="mt-2 flex items-center justify-between">
             <p className="text-xs text-slate-400">
-              Answers are computed from your recorded project data — verify
+              Answers are computed from your recorded project data. Verify
               critical decisions with your team.
             </p>
             {messages.length > 0 && (

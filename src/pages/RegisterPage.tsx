@@ -17,6 +17,7 @@ export default function RegisterPage({ onBack, onSignIn }: Props) {
   const [email, setEmail] = useState("")
   const [jobTitle, setJobTitle] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -27,7 +28,17 @@ export default function RegisterPage({ onBack, onSignIn }: Props) {
       return
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters and include a number.")
+      setError("Password must be at least 8 characters.")
+      return
+    }
+    if (!/\p{L}/u.test(password) || !/\p{N}/u.test(password)) {
+      setError("Password must include at least one letter and one number.")
+      return
+    }
+    if (password !== confirmPassword) {
+      setError(
+        "Passwords do not match. Re-enter the same password in both fields.",
+      )
       return
     }
     setError("")
@@ -47,7 +58,7 @@ export default function RegisterPage({ onBack, onSignIn }: Props) {
 
   return (
     <div className="flex min-h-screen bg-white">
-      {/* Left panel — brand */}
+      {/* Left panel: brand */}
       <div className="relative hidden w-[420px] shrink-0 flex-col justify-between overflow-hidden bg-slate-900 p-10 lg:flex">
         <img
           src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=960&h=1200&fit=crop&auto=format"
@@ -75,8 +86,8 @@ export default function RegisterPage({ onBack, onSignIn }: Props) {
             workspace.
           </h1>
           <p className="max-w-[320px] text-[15px] leading-relaxed text-slate-400">
-            Create an account to manage projects, teams, materials, budgets
-            and documents from day one.
+            Create an account to manage projects, teams, materials, budgets and
+            documents from day one.
           </p>
         </div>
         <div className="relative">
@@ -101,7 +112,7 @@ export default function RegisterPage({ onBack, onSignIn }: Props) {
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel: form */}
       <div className="flex flex-1 items-center justify-center p-6 sm:p-8">
         <div className="w-full max-w-[400px]">
           <div className="mb-8 flex items-center justify-between">
@@ -194,7 +205,8 @@ export default function RegisterPage({ onBack, onSignIn }: Props) {
                 htmlFor="register-job"
                 className="mb-1.5 block text-sm font-medium text-slate-700"
               >
-                Job title <span className="font-normal text-slate-400">(optional)</span>
+                Job title{" "}
+                <span className="font-normal text-slate-400">(optional)</span>
               </label>
               <div className="relative">
                 <Briefcase
@@ -239,6 +251,36 @@ export default function RegisterPage({ onBack, onSignIn }: Props) {
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
                 Use at least 8 characters with one letter and one number.
+              </p>
+            </div>
+
+            <div className="mb-5">
+              <label
+                htmlFor="register-confirm"
+                className="mb-1.5 block text-sm font-medium text-slate-700"
+              >
+                Confirm password
+              </label>
+              <div className="relative">
+                <Lock
+                  size={15}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  aria-hidden="true"
+                />
+                <input
+                  id="register-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat your password"
+                  className={inputClass}
+                />
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                {password && confirmPassword && password !== confirmPassword
+                  ? "Passwords do not match."
+                  : "Re-enter the password to confirm it."}
               </p>
             </div>
 

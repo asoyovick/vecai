@@ -20,8 +20,9 @@ func NewHandler(service *Service) *Handler {
 }
 
 // RegisterRoutes mounts document endpoints under /projects/:id/documents.
-func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
+func (h *Handler) RegisterRoutes(api *gin.RouterGroup, access gin.HandlerFunc) {
 	group := api.Group("/projects/:id/documents")
+	group.Use(access)
 	{
 		group.POST("", h.Upload)
 		group.GET("", h.List)

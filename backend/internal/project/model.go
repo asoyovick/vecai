@@ -11,6 +11,7 @@ var (
 	ErrInvalidInput     = errors.New("invalid project input")
 	ErrDuplicateProject = errors.New("project with this ID already exists")
 	ErrUnauthorized     = errors.New("unauthorized: insufficient permissions")
+	ErrAccessDenied     = errors.New("access denied")
 )
 
 // Project mirrors the projects table from docs/database.md.

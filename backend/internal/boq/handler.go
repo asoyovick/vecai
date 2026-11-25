@@ -18,8 +18,9 @@ func NewHandler(service *Service) *Handler {
 }
 
 // RegisterRoutes mounts BOQ endpoints under /projects/:id/boq.
-func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
+func (h *Handler) RegisterRoutes(api *gin.RouterGroup, access gin.HandlerFunc) {
 	group := api.Group("/projects/:id/boq")
+	group.Use(access)
 	{
 		group.POST("", h.Create)
 		group.GET("", h.List)

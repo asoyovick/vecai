@@ -19,8 +19,9 @@ func NewHandler(service *Service) *Handler {
 }
 
 // RegisterRoutes mounts material tracking endpoints under /projects/:id/materials.
-func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
+func (h *Handler) RegisterRoutes(api *gin.RouterGroup, access gin.HandlerFunc) {
 	group := api.Group("/projects/:id/materials")
+	group.Use(access)
 	{
 		group.POST("", h.Create)
 		group.GET("", h.List)

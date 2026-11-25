@@ -19,8 +19,9 @@ func NewHandler(service *Service) *Handler {
 }
 
 // RegisterRoutes mounts daily report endpoints under /projects/:id/reports.
-func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
+func (h *Handler) RegisterRoutes(api *gin.RouterGroup, access gin.HandlerFunc) {
 	group := api.Group("/projects/:id/reports")
+	group.Use(access)
 	{
 		group.POST("", h.Create)
 		group.GET("", h.List)

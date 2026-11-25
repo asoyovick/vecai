@@ -20,7 +20,8 @@ BINARY          ?= $(BIN_DIR)/$(APP_NAME)
 MIGRATIONS_DIR  ?= backend/db/migrations
 UPLOAD_DIR      ?= backend/uploads
 PORT            ?= 8080
-JWT_SECRET      ?= vecai-default-dev-secret-change-in-prod
+APP_ENV         ?= development
+JWT_SECRET      ?= vecai-dev-secret-change-me-please
 
 # Database Configuration
 DB_CONTAINER    ?= vecai-db
@@ -64,12 +65,12 @@ help: ## Display this help screen with available targets
 
 run: ## Start the backend API server directly
 	@echo "[RUN] Starting $(APP_NAME) API server..."
-	@PORT="$(PORT)" DATABASE_URL="$(DB_URL)" MIGRATIONS_PATH="$(MIGRATIONS_DIR)" UPLOAD_DIR="$(UPLOAD_DIR)" JWT_SECRET="$(JWT_SECRET)" go run $(MAIN_PATH)
+	@APP_ENV="$(APP_ENV)" PORT="$(PORT)" DATABASE_URL="$(DB_URL)" MIGRATIONS_PATH="$(MIGRATIONS_DIR)" UPLOAD_DIR="$(UPLOAD_DIR)" JWT_SECRET="$(JWT_SECRET)" go run $(MAIN_PATH)
 
 dev: ## Start backend with live reload (air)
 	@if [ -n "$(AIR)" ]; then \
 		echo "[DEV] Starting $(APP_NAME) with air live-reload..."; \
-		PORT="$(PORT)" DATABASE_URL="$(DB_URL)" MIGRATIONS_PATH="$(MIGRATIONS_DIR)" UPLOAD_DIR="$(UPLOAD_DIR)" JWT_SECRET="$(JWT_SECRET)" $(AIR); \
+		APP_ENV="$(APP_ENV)" PORT="$(PORT)" DATABASE_URL="$(DB_URL)" MIGRATIONS_PATH="$(MIGRATIONS_DIR)" UPLOAD_DIR="$(UPLOAD_DIR)" JWT_SECRET="$(JWT_SECRET)" $(AIR); \
 	else \
 		echo "[DEV] 'air' not found. Falling back to 'go run'. Run 'make install-tools' to install live-reload."; \
 		$(MAKE) run; \

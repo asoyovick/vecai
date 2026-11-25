@@ -30,7 +30,10 @@ func main() {
 	dbConnStr := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/vecai?sslmode=disable")
 	migrationsPath := getEnv("MIGRATIONS_PATH", "backend/db/migrations")
 	uploadDir := getEnv("UPLOAD_DIR", "backend/uploads")
-	jwtSecret := auth.SecretFromEnv()
+	jwtSecret, err := auth.SecretFromEnv()
+	if err != nil {
+		log.Fatalf("[FATAL] Invalid JWT configuration: %v", err)
+	}
 
 	log.Println("[INIT] Connecting to PostgreSQL...")
 	dbConn, err := db.InitDB(dbConnStr)

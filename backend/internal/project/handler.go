@@ -19,24 +19,29 @@ func NewHandler(service *Service) *Handler {
 }
 
 // RegisterRoutes mounts project endpoints onto the versioned API group.
-func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
+func (h *Handler) RegisterRoutes(api *gin.RouterGroup, access gin.HandlerFunc) {
 	projects := api.Group("/projects")
 	{
 		projects.POST("", h.CreateProject)
 		projects.GET("", h.ListProjects)
-		projects.GET("/:id", h.GetProjectByID)
-		projects.PUT("/:id", h.UpdateProject)
-		projects.DELETE("/:id", h.DeleteProject)
 
-		projects.POST("/:id/members", h.InviteMember)
-		projects.GET("/:id/members", h.GetMembersByProject)
-		projects.DELETE("/:id/members/:memberId", h.RemoveMember)
+		detail := projects.Group("/:id")
+		detail.Use(access)
+		{
+			detail.GET("", h.GetProjectByID)
+			detail.PUT("", RequireProjectOwner(), h.UpdateProject)
+			detail.DELETE("", RequireProjectOwner(), h.DeleteProject)
 
-		projects.POST("/:id/blueprints", h.AddBlueprint)
-		projects.GET("/:id/blueprints", h.GetBlueprintsByProject)
+			detail.POST("/members", RequireProjectOwner(), h.InviteMember)
+			detail.GET("/members", h.GetMembersByProject)
+			detail.DELETE("/members/:memberId", RequireProjectOwner(), h.RemoveMember)
 
-		projects.POST("/:id/specs", h.AddSpec)
-		projects.GET("/:id/specs", h.GetSpecsByProject)
+			detail.POST("/blueprints", h.AddBlueprint)
+			detail.GET("/blueprints", h.GetBlueprintsByProject)
+
+			detail.POST("/specs", h.AddSpec)
+			detail.GET("/specs", h.GetSpecsByProject)
+		}
 	}
 }
 

@@ -86,12 +86,14 @@ func main() {
 	protected := apiGroup.Group("")
 	protected.Use(auth.AuthMiddleware(jwtSecret))
 
+	projectAccess := project.RequireProjectAccess(projectService)
+
 	authHandler.RegisterRoutes(apiGroup, protected)
-	projectHandler.RegisterRoutes(protected)
-	materialsHandler.RegisterRoutes(protected)
-	reportsHandler.RegisterRoutes(protected)
-	documentsHandler.RegisterRoutes(protected)
-	boqHandler.RegisterRoutes(protected)
+	projectHandler.RegisterRoutes(protected, projectAccess)
+	materialsHandler.RegisterRoutes(protected, projectAccess)
+	reportsHandler.RegisterRoutes(protected, projectAccess)
+	documentsHandler.RegisterRoutes(protected, projectAccess)
+	boqHandler.RegisterRoutes(protected, projectAccess)
 
 	router.GET("/health", func(c *gin.Context) {
 		api.OK(c, http.StatusOK, "ok", gin.H{"time": time.Now().UTC()})

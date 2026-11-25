@@ -10,12 +10,17 @@ import (
 // jwtSecret returns the signing secret shared by token generation and
 // validation. It must match the secret used by the auth middleware, so both
 // go through SecretFromEnv instead of separate hardcoded values.
-func jwtSecret() []byte {
+func jwtSecret() ([]byte, error) {
 	return SecretFromEnv()
 }
 
 // GenerateToken wraps user data and metadata into a signed string valid for 24 hours
 func GenerateToken(user User) (string, error) {
+	secret, err := jwtSecret()
+	if err != nil {
+		return "", err
+	}
+
 	claims := CustomClaims{
 		ID:   user.ID,
 		Role: user.Role,
@@ -27,16 +32,21 @@ func GenerateToken(user User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret())
+	return token.SignedString(secret)
 }
 
 // ValidateToken parses the incoming JWT and ensures the cryptographic integrity remains clean
 func ValidateToken(tokenString string) (*CustomClaims, error) {
+	secret, err := jwtSecret()
+	if err != nil {
+		return nil, err
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected token signing algorithm configuration")
 		}
-		return jwtSecret(), nil
+		return secret, nil
 	})
 
 	if err != nil {

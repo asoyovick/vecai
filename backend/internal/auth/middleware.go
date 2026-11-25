@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -18,13 +19,37 @@ const (
 	UserRoleContextKey ContextKey = "user_role"
 )
 
-// SecretFromEnv reads the JWT signing secret from the environment,
-// falling back to a development-only value when unset.
-func SecretFromEnv() []byte {
-	if secret := os.Getenv("JWT_SECRET"); secret != "" {
-		return []byte(secret)
+const (
+	minJWTSecretLength = 32
+	devJWTSecret       = "vecai-dev-secret-change-me-please"
+)
+
+// SecretFromEnv reads the JWT signing secret from the environment.
+// In production (APP_ENV=production), JWT_SECRET is required and must be at
+// least 32 characters. In other environments, a development-only default is
+// permitted with a loud warning.
+func SecretFromEnv() ([]byte, error) {
+	secret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	appEnv := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
+
+	if appEnv == "production" {
+		if secret == "" {
+			return nil, errors.New("JWT_SECRET is required when APP_ENV=production")
+		}
+		if len(secret) < minJWTSecretLength {
+			return nil, errors.New("JWT_SECRET must be at least 32 characters when APP_ENV=production")
+		}
+		return []byte(secret), nil
 	}
-	return []byte("vecai-dev-secret-change-me")
+
+	if secret == "" {
+		log.Println("[WARN] JWT_SECRET is not set; using an insecure development default. Set JWT_SECRET before deploying.")
+		return []byte(devJWTSecret), nil
+	}
+	if len(secret) < minJWTSecretLength {
+		log.Println("[WARN] JWT_SECRET is shorter than 32 characters; use a stronger secret before deploying.")
+	}
+	return []byte(secret), nil
 }
 
 // AuthMiddleware validates JWTs and injects user information into the request context.

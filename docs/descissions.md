@@ -374,3 +374,35 @@ Every important technical decision should answer one question:
 **"Will this make VECAI easier to understand, maintain, and scale over the next five years?"**
 
 If the answer is no, the decision should be reconsidered.
+
+---
+
+# Decision 010: Document File Storage Strategy
+
+## Status
+
+Accepted
+
+## Context
+
+Document uploads were initially stored on the local filesystem (`UPLOAD_DIR`). This is unreliable on ephemeral hosts (e.g. Render) where disk is not persistent across deploys.
+
+## Decision
+
+Introduce a `storage.Storer` interface with a local disk implementation (`LocalStorage`) as the default. The service layer uses the interface for save/open/delete. File uploads enforce an allowlist of MIME types and use server-side content-type sniffing (`http.DetectContentType`) before storage. An S3-compatible implementation can be added later by implementing the same interface (configuration-driven), without changing handlers/services.
+
+## Reasoning
+
+An interface preserves the existing local behavior while enabling durable object storage later. Sniffing + allowlist reduces risk of storing unexpected file types.
+
+## Consequences
+
+Advantages
+
+- Storage backend is swappable (local now, S3-compatible later).
+- Basic file-type validation is enforced at upload time.
+
+Trade-offs
+
+- S3 implementation is deferred; production deployments still need durable storage configuration.
+- Existing stored files remain on disk until migrated.

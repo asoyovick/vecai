@@ -5,29 +5,43 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"os"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+
+	"vecai/backend/internal/storage"
 )
 
-// Service manages file document storage It coordinates persisting raw files
-// bytes onto local disk and saving their associated meta data.
+// Service manages document metadata and file storage via a Storer.
 type Service struct {
 	repo      Repository
-	uploadDir string
+	storer    storage.Storer
+	uploadDir string // kept for backward compatibility in logs; storage may ignore
 }
 
-// NewService constructs a new document management service with the provided repository implementation and root upload directory on the disk.
-func NewService(repo Repository, uploadDir string) *Service {
-	return &Service{repo: repo, uploadDir: uploadDir}
+// NewService constructs a document service.
+func NewService(repo Repository, storer storage.Storer) *Service {
+	return &Service{repo: repo, storer: storer}
 }
+
+var allowedContentTypes = map[string]bool{
+	"application/pdf":    true,
+	"image/png":          true,
+	"image/jpeg":         true,
+	"image/jpg":          true,
+	"application/msword": true,
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+	"application/vnd.ms-excel": true,
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+}
+
+const sniffSize = 512
 
 // Upload saves a multipart file for a project and records its metadata.
 func (s *Service) Upload(ctx context.Context, projectID, userID string, header *multipart.FileHeader, category string) (*Document, error) {
-	// Guard clause: ensue the uploaded file contains data.
 	if header.Size <= 0 {
 		return nil, fmt.Errorf("%w: uploaded file is empty", ErrInvalidInput)
 	}
@@ -35,46 +49,50 @@ func (s *Service) Upload(ctx context.Context, projectID, userID string, header *
 		return nil, ErrFileTooLarge
 	}
 	category = strings.TrimSpace(category)
-	//open the uploaded file header stream to read bytes
+
 	src, err := header.Open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
 	}
 	defer src.Close()
 
-	docID := uuid.NewString()
-	filename := sanitizeFilename(header.Filename)
-	storagePath := filepath.Join(s.uploadDir, projectID, docID+"_"+filename)
-
-	if err := os.MkdirAll(filepath.Dir(storagePath), 0o755); err != nil {
-		return nil, fmt.Errorf("failed to create upload directory: %w", err)
+	// Sniff content type from first bytes
+	buf := make([]byte, sniffSize)
+	n, err := src.Read(buf)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to read uploaded file: %w", err)
+	}
+	sniffed := http.DetectContentType(buf[:n])
+	if !allowedContentTypes[sniffed] {
+		return nil, fmt.Errorf("%w: file type %s is not allowed", ErrInvalidInput, sniffed)
 	}
 
-	dst, err := os.Create(storagePath)
+	// Reconstruct reader: first the sniffed bytes we read, then the rest
+	combined := io.MultiReader(strings.NewReader(string(buf[:n])), src)
+
+	docID := uuid.NewString()
+	filename := sanitizeFilename(header.Filename)
+	key := projectID + "/" + docID + "_" + filename
+
+	obj, err := s.storer.Save(ctx, key, combined, sniffed)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store uploaded file: %w", err)
 	}
-	defer dst.Close()
 
-	if _, err := io.Copy(dst, src); err != nil {
-		os.Remove(storagePath)
-		return nil, fmt.Errorf("failed to write uploaded file: %w", err)
-	}
-	// Build the document metadata record.
 	doc := &Document{
 		ID:          docID,
 		ProjectID:   projectID,
 		UploadedBy:  userID,
 		Filename:    filename,
-		FileType:    filepath.Ext(filename),
-		FileSize:    header.Size,
-		StoragePath: storagePath,
+		FileType:    sniffed,
+		FileSize:    obj.Size,
+		StoragePath: obj.Key,
 		Category:    category,
 		UploadedAt:  time.Now().UTC(),
 	}
 
 	if err := s.repo.Create(ctx, doc); err != nil {
-		os.Remove(storagePath) // keep disk and database consistent
+		_ = s.storer.Delete(ctx, key)
 		return nil, fmt.Errorf("failed to record document: %w", err)
 	}
 	return doc, nil
@@ -90,32 +108,30 @@ func (s *Service) List(ctx context.Context, projectID string) ([]*Document, erro
 	return s.repo.ListByProject(ctx, projectID)
 }
 
-// Delete removes a document from the database and purges its stored file from local disk.
+// Delete removes a document from the database and purges its stored file.
 func (s *Service) Delete(ctx context.Context, projectID, documentID string) error {
 	doc, err := s.repo.GetByID(ctx, projectID, documentID)
 	if err != nil {
 		return err
 	}
-	// delete metadata from the database
 	if err := s.repo.Delete(ctx, projectID, documentID); err != nil {
 		return err
 	}
-
 	if doc.StoragePath != "" {
-		if err := os.Remove(doc.StoragePath); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("failed to remove stored file: %w", err)
+		if err := s.storer.Delete(ctx, doc.StoragePath); err != nil {
+			// log but don't fail the delete? best effort
+			_ = err
 		}
 	}
 	return nil
 }
 
 // OpenFile returns a reader over the stored bytes for streaming downloads.
-func (s *Service) OpenFile(doc *Document) (*os.File, error) {
-	return os.Open(doc.StoragePath)
+func (s *Service) OpenFile(ctx context.Context, doc *Document) (io.ReadCloser, error) {
+	return s.storer.Open(ctx, doc.StoragePath)
 }
 
-// sanitizeFilename strips directory components and characters that could
-// escape the upload directory.
+// sanitizeFilename strips directory components and characters that could escape the upload directory.
 func sanitizeFilename(name string) string {
 	name = filepath.Base(name)
 	name = strings.Map(func(r rune) rune {
@@ -128,7 +144,6 @@ func sanitizeFilename(name string) string {
 			return '_'
 		}
 	}, name)
-	//Provides a feedback name if sanitization results in an empty or current-dir string.
 	if name == "" || name == "." {
 		name = "upload"
 	}

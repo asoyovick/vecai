@@ -6,7 +6,7 @@ import { HowItWorks } from "@/components/home/how-it-works";
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
+    <>
       <Navbar />
 
       <main className="flex-grow">
@@ -17,6 +17,6 @@ export default function HomePage() {
       </main>
 
       <Footer />
-    </div>
+    </>
   );
 }

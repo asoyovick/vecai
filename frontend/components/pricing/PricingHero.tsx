@@ -9,7 +9,7 @@ export function PricingHero() {
           Pay for what you build, not what you might
         </h1>
         <p className="mx-auto mt-6 max-w-[480px] text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[var(--color-muted)]">
-          Start free on a single project. Upgrade when you're running more
+          Start free on a single project. Upgrade when you&apos;re running more
           than one at a time.
         </p>
       </Container>

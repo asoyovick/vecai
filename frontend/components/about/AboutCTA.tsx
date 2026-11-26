@@ -25,8 +25,8 @@ export function AboutCTA() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/get-started"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#F28500] hover:bg-[#F28500]/90 text-white font-bold text-base shadow-md transition-all duration-200"
+              href="/register"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white hover:bg-white/90 text-[#F28500] font-bold text-base shadow-md transition-all duration-200"
             >
               <span>Start a Project</span>
               <ArrowRight className="w-5 h-5" />

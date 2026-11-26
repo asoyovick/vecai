@@ -80,8 +80,7 @@ func (h *Handler) Download(c *gin.Context) {
 		api.Fail(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
-	//
-	file, err := h.service.OpenFile(doc)
+	file, err := h.service.OpenFile(c.Request.Context(), doc)
 	if err != nil {
 		api.Fail(c, http.StatusNotFound, "stored file is missing")
 		return

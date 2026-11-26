@@ -11,7 +11,7 @@ export function IndustriesHero() {
         </h1>
         <p className="mt-6 max-w-[560px] text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[var(--color-muted)]">
           A warehouse and a school don&apos;t share a cost structure, a
-          timeline, or a compliance checklist. VECAI's estimating and
+          timeline, or a compliance checklist. VECAI&apos;s estimating and
           planning models are tuned per industry, not applied generically.
         </p>
       </Container>

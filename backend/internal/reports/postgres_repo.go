@@ -72,6 +72,25 @@ func (r *PostgresRepository) ListByProject(ctx context.Context, projectID string
 	return items, rows.Err()
 }
 
+func (r *PostgresRepository) Update(ctx context.Context, report *Report) error {
+	query := `
+		UPDATE daily_reports
+		SET report_date = $1::DATE, completed_work = $2, workers_present = $3, remarks = $4
+		WHERE project_id = $5 AND id = $6
+	`
+	result, err := r.db.ExecContext(ctx, query,
+		report.ReportDate, report.CompletedWork, report.WorkersPresent, report.Remarks,
+		report.ProjectID, report.ID,
+	)
+	if err != nil {
+		return err
+	}
+	if rows, err := result.RowsAffected(); err == nil && rows == 0 {
+		return ErrReportNotFound
+	}
+	return nil
+}
+
 func (r *PostgresRepository) Delete(ctx context.Context, projectID, reportID string) error {
 	result, err := r.db.ExecContext(ctx, `DELETE FROM daily_reports WHERE project_id = $1 AND id = $2`, projectID, reportID)
 	if err != nil {

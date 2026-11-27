@@ -52,8 +52,25 @@ export async function apiGet<T>(path: string, token?: string): Promise<T> {
   return apiRequest<T>("GET", path, { token });
 }
 
+/** PUT a resource to the backend, optionally authenticated. */
+export async function apiPut<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<T> {
+  return apiRequest<T>("PUT", path, { body: JSON.stringify(body), token });
+}
+
+/** DELETE a resource from the backend, optionally authenticated. */
+export async function apiDelete<T>(
+  path: string,
+  token?: string,
+): Promise<T> {
+  return apiRequest<T>("DELETE", path, { token });
+}
+
 async function apiRequest<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
   options: { body?: string; token?: string },
 ): Promise<T> {
@@ -74,5 +91,6 @@ async function apiRequest<T>(
       json?.error ?? "Unable to reach the server. Please try again.",
     );
   }
-  return json.data as T;
+  // Some DELETE/PUT may return null data
+  return (json.data ?? (null as T));
 }

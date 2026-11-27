@@ -151,37 +151,39 @@ export default function DashboardPage() {
         {projects && projects.length > 0 && (
           <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
-              <li
-                key={project.id}
-                className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="font-bold text-[#000080] truncate">
-                    {project.name}
-                  </h2>
-                  <StatusBadge status={project.status} />
-                </div>
-                <p className="mt-1 text-sm text-slate-500 line-clamp-2">
-                  {project.description || "No description"}
-                </p>
-                <dl className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
-                  <div>
-                    <dt className="font-medium text-slate-400">Location</dt>
-                    <dd>{project.location || "—"}</dd>
+              <li key={project.id}>
+                <Link
+                  href={`/dashboard/projects/${project.id}`}
+                  className="block rounded-2xl bg-white border border-slate-200 p-6 shadow-sm hover:border-[#F28500]/50 hover:shadow-md transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="font-bold text-[#000080] truncate">
+                      {project.name}
+                    </h2>
+                    <StatusBadge status={project.status} />
                   </div>
-                  <div>
-                    <dt className="font-medium text-slate-400">Client</dt>
-                    <dd>{project.client_name || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-slate-400">Start</dt>
-                    <dd>{project.start_date || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-slate-400">Target end</dt>
-                    <dd>{project.expected_end_date || "—"}</dd>
-                  </div>
-                </dl>
+                  <p className="mt-1 text-sm text-slate-500 line-clamp-2">
+                    {project.description || "No description"}
+                  </p>
+                  <dl className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
+                    <div>
+                      <dt className="font-medium text-slate-400">Location</dt>
+                      <dd>{project.location || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-400">Client</dt>
+                      <dd>{project.client_name || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-400">Start</dt>
+                      <dd>{project.start_date || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-400">Target end</dt>
+                      <dd>{project.expected_end_date || "—"}</dd>
+                    </div>
+                  </dl>
+                </Link>
               </li>
             ))}
           </ul>

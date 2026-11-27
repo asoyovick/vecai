@@ -47,6 +47,27 @@ func (s *Service) List(ctx context.Context, projectID string) ([]*Report, error)
 	return s.repo.ListByProject(ctx, projectID)
 }
 
+func (s *Service) Update(ctx context.Context, projectID, reportID, userID string, req CreateRequest) (*Report, error) {
+	if err := validate(req); err != nil {
+		return nil, err
+	}
+	// Ensure report exists and belongs to project
+	existing, err := s.repo.GetByID(ctx, projectID, reportID)
+	if err != nil {
+		return nil, err
+	}
+	existing.ReportDate = req.ReportDate
+	existing.CompletedWork = strings.TrimSpace(req.CompletedWork)
+	existing.WorkersPresent = req.WorkersPresent
+	existing.Remarks = strings.TrimSpace(req.Remarks)
+	// userID not changed on update (keep original reporter)
+	_ = userID
+	if err := s.repo.Update(ctx, existing); err != nil {
+		return nil, fmt.Errorf("failed to update daily report: %w", err)
+	}
+	return existing, nil
+}
+
 func (s *Service) Delete(ctx context.Context, projectID, reportID string) error {
 	return s.repo.Delete(ctx, projectID, reportID)
 }

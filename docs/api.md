@@ -382,6 +382,27 @@ Example
 
 ---
 
+## Update Daily Report
+
+### PUT
+
+```text
+/projects/{id}/reports/{reportId}
+```
+
+Example request body:
+
+```json
+{
+  "date": "2026-07-05",
+  "workers": 18,
+  "completed_work": "Foundation excavation completed",
+  "remarks": "No delays"
+}
+```
+
+---
+
 # Document Management
 
 ## Upload Document

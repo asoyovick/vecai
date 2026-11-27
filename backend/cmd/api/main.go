@@ -23,6 +23,7 @@ import (
 	"vecai/backend/internal/newsletter"
 	"vecai/backend/internal/project"
 	"vecai/backend/internal/reports"
+	"vecai/backend/internal/storage"
 )
 
 func main() {
@@ -65,7 +66,8 @@ func main() {
 	reportsHandler := reports.NewHandler(reportsService)
 
 	documentsRepo := documents.NewPostgresRepository(dbConn)
-	documentsService := documents.NewService(documentsRepo, uploadDir)
+	documentsStorer := storage.NewLocalStorage(uploadDir)
+	documentsService := documents.NewService(documentsRepo, documentsStorer)
 	documentsHandler := documents.NewHandler(documentsService)
 
 	boqRepo := boq.NewPostgresRepository(dbConn)

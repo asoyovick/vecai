@@ -26,6 +26,7 @@ func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
 		group.GET("", h.List)
 		group.GET("/summary", h.Summary)
 		group.GET("/:reportId", h.Get)
+		group.PUT("/:reportId", h.Update)
 		group.DELETE("/:reportId", h.Delete)
 	}
 }
@@ -86,6 +87,19 @@ func (h *Handler) Get(c *gin.Context) {
 	}
 
 	api.OK(c, http.StatusOK, "", report)
+}
+
+func (h *Handler) Update(c *gin.Context) {
+	var req CreateRequest
+	if !api.BindJSON(c, &req) {
+		return
+	}
+	report, err := h.service.Update(c.Request.Context(), c.Param("id"), c.Param("reportId"), req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	api.OK(c, http.StatusOK, "Daily report updated", report)
 }
 
 func (h *Handler) Delete(c *gin.Context) {

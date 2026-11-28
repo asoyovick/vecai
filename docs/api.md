@@ -145,6 +145,7 @@ Some handlers may include `message`; clients should handle `success`, `message`,
 | GET | `/api/v1/projects/:id/reports` | List daily reports |
 | GET | `/api/v1/projects/:id/reports/summary` | Reports summary |
 | GET | `/api/v1/projects/:id/reports/:reportId` | Get daily report |
+| PUT | `/api/v1/projects/:id/reports/:reportId` | Update daily report |
 | DELETE | `/api/v1/projects/:id/reports/:reportId` | Delete daily report |
 
 ### BOQ

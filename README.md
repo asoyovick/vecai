@@ -1,5 +1,7 @@
 # VECAI
 
+[![CI](https://github.com/asoyovick/vecai/actions/workflows/ci.yml/badge.svg)](https://github.com/asoyovick/vecai/actions/workflows/ci.yml)
+
 **VECAI (Victoria Eagles Construct AI)** is a construction project management platform designed to help contractors, engineers, architects, quantity surveyors, suppliers, and project owners manage construction work more efficiently.
 
 The platform centralizes project information, tracks materials, manages documents, and supports daily site reporting. Future versions will add AI-assisted forecasting and decision support.

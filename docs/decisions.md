@@ -63,7 +63,7 @@ Trade-offs
 
 ## Status
 
-Accepted
+Superseded by Decision 011
 
 ## Context
 
@@ -92,6 +92,10 @@ Advantages
 Trade-offs
 
 * Some features require more manual implementation
+
+## Update
+
+Superseded by [Decision 011](#decision-011-adopt-gin-for-the-http-api) as the API surface grew and route grouping, middleware, and request binding became repetitive with `net/http`.
 
 ---
 
@@ -173,7 +177,7 @@ Trade-offs
 
 ## Status
 
-Accepted
+Superseded by Decision 012
 
 ## Context
 
@@ -200,6 +204,10 @@ Advantages
 Trade-offs
 
 * Less interactive user interface compared to modern SPAs
+
+## Update
+
+Superseded by [Decision 012](#decision-012-adopt-nextjs-for-the-frontend) as the product moved to a separate frontend application with a richer interactive dashboard and static export/deployment options.
 
 ---
 
@@ -364,6 +372,86 @@ As VECAI evolves, this document will be expanded with decisions such as:
 * CI/CD pipeline
 
 Each new decision should include its context, reasoning, and expected consequences.
+
+---
+
+# Decision 011: Adopt Gin for the HTTP API
+
+## Status
+
+Accepted
+
+## Context
+
+The backend started with `net/http` (Decision 002), but as the API grew to multiple domain modules, route grouping, middleware composition, JSON binding, and parameter parsing became repetitive.
+
+## Decision
+
+Use [Gin](https://github.com/gin-gonic/gin) as the HTTP framework for the backend API in `backend/cmd/api`.
+
+## Reasoning
+
+Gin provides:
+
+* Route groups for `/api/v1` and domain subroutes
+* Middleware for CORS, recovery, logging, and authentication
+* Convenient request binding and response helpers
+* Good performance and a familiar Go API style
+
+The application still keeps business logic in domain modules under `backend/internal/`, preserving the modular monolith boundary.
+
+## Consequences
+
+Advantages
+
+* Less boilerplate for routing and middleware
+* Clearer route registration per domain module
+* Faster delivery of new API endpoints
+
+Trade-offs
+
+* Adds a third-party framework dependency
+* Some framework conventions must be learned and kept consistent
+
+---
+
+# Decision 012: Adopt Next.js for the Frontend
+
+## Status
+
+Accepted
+
+## Context
+
+The MVP initially planned server-rendered HTML templates (Decision 005). As the product required a richer dashboard, authenticated client flows, and a separate deployable frontend, template rendering in the Go server became limiting.
+
+## Decision
+
+Build the frontend as a separate Next.js application in `frontend/`, using React, TypeScript, and Tailwind CSS.
+
+## Reasoning
+
+Next.js provides:
+
+* A modern component model for dashboard and form-heavy UI
+* Client-side routing and authenticated application flows
+* A clear separation between the API backend and frontend UI
+* Static/export and deployment flexibility
+
+The Go backend remains the API and business-logic layer; the frontend consumes it over HTTP.
+
+## Consequences
+
+Advantages
+
+* Richer, more interactive user experience
+* Clear frontend/backend separation
+* Frontend can evolve independently
+
+Trade-offs
+
+* Two applications to develop and deploy
+* Requires CORS and API contract coordination
 
 ---
 

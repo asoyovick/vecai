@@ -65,6 +65,17 @@ func (r *PostgresRepository) ListProjectsByOwner(ctx context.Context, ownerID st
 	return r.queryProjects(ctx, query, ownerID)
 }
 
+func (r *PostgresRepository) ListProjectsByUser(ctx context.Context, userID string) ([]*Project, error) {
+	query := `SELECT ` + projectColumns + ` FROM projects p
+		WHERE p.owner_id = $1
+		   OR EXISTS (
+			SELECT 1 FROM project_members pm
+			WHERE pm.project_id = p.id AND pm.user_id::text = $1
+		   )
+		ORDER BY p.created_at DESC`
+	return r.queryProjects(ctx, query, userID)
+}
+
 func (r *PostgresRepository) ListAllProjects(ctx context.Context) ([]*Project, error) {
 	query := `SELECT ` + projectColumns + ` FROM projects ORDER BY created_at DESC`
 	return r.queryProjects(ctx, query)
@@ -275,6 +286,15 @@ func (r *PostgresRepository) GetMemberByUserID(ctx context.Context, projectID, u
 		WHERE pm.project_id = $1 AND pm.user_id = $2
 	`
 	return scanMember(r.db.QueryRowContext(ctx, query, projectID, userID))
+}
+
+func (r *PostgresRepository) IsMember(ctx context.Context, projectID, userID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM project_members WHERE project_id = $1 AND user_id::text = $2)`,
+		projectID, userID,
+	).Scan(&exists)
+	return exists, err
 }
 
 func (r *PostgresRepository) DeleteMember(ctx context.Context, projectID, memberID string) error {

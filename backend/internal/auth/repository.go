@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 )
 
 var (
@@ -14,16 +15,23 @@ var (
 // UserRepository defines the strict interface contract for data persistence.
 // Both your live SQL database implementation and this memory mock must implement this.
 
+type verificationToken struct {
+	hash      string
+	expiresAt time.Time
+}
+
 // MemoryUserRepository provides a thread-safe, volatile in-memory storage engine.
 type MemoryUserRepository struct {
-	mu    sync.RWMutex
-	users map[string]User // Keyed by email address for O(1) lookups
+	mu     sync.RWMutex
+	users  map[string]User // Keyed by email address for O(1) lookups
+	tokens map[string]verificationToken
 }
 
 // NewMemoryUserRepository instantiates the database-less mock repository layer.
 func NewMemoryUserRepository() *MemoryUserRepository {
 	return &MemoryUserRepository{
-		users: make(map[string]User),
+		users:  make(map[string]User),
+		tokens: make(map[string]verificationToken),
 	}
 }
 
@@ -53,6 +61,31 @@ func (r *MemoryUserRepository) GetUserByEmail(ctx context.Context, email string)
 	return user, nil
 }
 
+func (r *MemoryUserRepository) GetUserByID(ctx context.Context, id string) (User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, u := range r.users {
+		if u.ID == id {
+			return u, nil
+		}
+	}
+	return User{}, ErrUserNotFound
+}
+
+func (r *MemoryUserRepository) UpdateProfile(ctx context.Context, id, fullname, phone string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for email, u := range r.users {
+		if u.ID == id {
+			u.Fullname = fullname
+			u.Phone = phone
+			r.users[email] = u
+			return nil
+		}
+	}
+	return ErrUserNotFound
+}
+
 // UpdateVerificationStatus flips the onboarding access flag for the target profile.
 func (r *MemoryUserRepository) UpdateVerificationStatus(ctx context.Context, email string, isVerified bool) error {
 	r.mu.Lock()
@@ -65,5 +98,32 @@ func (r *MemoryUserRepository) UpdateVerificationStatus(ctx context.Context, ema
 
 	user.IsVerified = isVerified
 	r.users[email] = user
+	return nil
+}
+
+func (r *MemoryUserRepository) SetVerificationToken(ctx context.Context, email, tokenHash string, expiresAt time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, exists := r.users[email]; !exists {
+		return ErrUserNotFound
+	}
+	r.tokens[email] = verificationToken{hash: tokenHash, expiresAt: expiresAt}
+	return nil
+}
+
+func (r *MemoryUserRepository) GetVerificationToken(ctx context.Context, email string) (string, time.Time, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	t, ok := r.tokens[email]
+	if !ok {
+		return "", time.Time{}, ErrUserNotFound
+	}
+	return t.hash, t.expiresAt, nil
+}
+
+func (r *MemoryUserRepository) ClearVerificationToken(ctx context.Context, email string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.tokens, email)
 	return nil
 }

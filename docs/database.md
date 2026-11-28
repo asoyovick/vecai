@@ -2,441 +2,232 @@
 
 ## Purpose
 
-This document defines the database structure for VECAI (Victoria Eagles Construct AI).
+This document describes the current PostgreSQL schema used by VECAI, based on migrations in `backend/db/migrations/`.
 
-The database is responsible for storing all application data in a secure, consistent, and scalable manner.
-
-The MVP uses **PostgreSQL** as the primary relational database.
+The database stores persistent application data. File contents for documents are stored outside PostgreSQL; document metadata is stored in the database.
 
 ---
 
-# Database Goals
-
-The database is designed to:
+## Database Goals
 
 * Maintain data integrity
-* Reduce duplication
-* Support future growth
-* Enable efficient querying
-* Support AI-powered analytics
-* Protect sensitive information
+* Support project-scoped queries
+* Keep schema changes traceable through migrations
+* Provide a foundation for future analytics and AI features
 
 ---
 
-# Database Overview
+## Migration Overview
 
-The MVP stores information about:
+Current migrations (`000001` to `000011`):
 
-* Users
-* Projects
-* Team Members
-* Daily Reports
-* Materials
-* BOQs
-* Documents
-* Suppliers
-* Quotations
-
----
-
-# Entity Relationship Overview
-
-```text
-                    Users
-                      │
-          ┌───────────┴───────────┐
-          │                       │
-          ▼                       ▼
-      Projects             Daily Reports
-          │                       │
-          │                       │
-          ├───────────────┐       │
-          │               │       │
-          ▼               ▼       ▼
-     Materials      Documents   Team Members
-          │
-          │
-          ▼
-         BOQ
-          │
-          ▼
-     Supplier Quotes
-          │
-          ▼
-      Suppliers
-```
+| Migration | Purpose |
+| --- | --- |
+| 000001 | Create `projects` table |
+| 000002 | Create `blueprints` and `specs` tables |
+| 000003 | Create `users` table |
+| 000004 | Create `project_members` table |
+| 000005 | Create `materials` table |
+| 000006 | Create `daily_reports` table |
+| 000007 | Create `boq_items` table |
+| 000008 | Create `project_documents` table |
+| 000009 | Create `newsletter_subscribers` table |
+| 000010 | Add profile/audit columns to `users` |
+| 000011 | Add missing project columns used by repository code |
 
 ---
 
-# Users Table
+## Current Tables
 
-Stores application users.
+### users
 
-| Column        | Type      | Description        |
-| ------------- | --------- | ------------------ |
-| id            | UUID      | Primary Key        |
-| first_name    | VARCHAR   | First name         |
-| last_name     | VARCHAR   | Last name          |
-| email         | VARCHAR   | Unique email       |
-| password_hash | TEXT      | Encrypted password |
-| role          | VARCHAR   | User role          |
-| phone         | VARCHAR   | Phone number       |
-| created_at    | TIMESTAMP | Creation date      |
-| updated_at    | TIMESTAMP | Last update        |
+Stores user accounts.
 
----
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key, default `gen_random_uuid()` |
+| name | VARCHAR(255) | Required |
+| email | VARCHAR(255) | Required, unique |
+| password_hash | TEXT | Required |
+| role | VARCHAR(50) | Default `owner` |
+| phone | VARCHAR(50) | Added in 000010 |
+| is_verified | BOOLEAN | Default `TRUE`, added in 000010 |
+| created_at | TIMESTAMPTZ | Default `NOW()` |
+| updated_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP`, added in 000010 |
 
-# Projects Table
+### projects
 
 Stores construction projects.
 
-| Column            | Type      |
-| ----------------- | --------- |
-| id                | UUID      |
-| name              | VARCHAR   |
-| description       | TEXT      |
-| location          | VARCHAR   |
-| client_name       | VARCHAR   |
-| status            | VARCHAR   |
-| start_date        | DATE      |
-| expected_end_date | DATE      |
-| created_by        | UUID      |
-| created_at        | TIMESTAMP |
-| updated_at        | TIMESTAMP |
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| name | VARCHAR(255) | Required |
+| description | TEXT | Optional |
+| location | VARCHAR(255) | Required |
+| owner_id | VARCHAR(255) | Required (creator/owner identifier) |
+| status | VARCHAR(50) | Default `Planning` |
+| client_name | VARCHAR(255) | Added in 000011 |
+| start_date | DATE | Added in 000011 |
+| expected_end_date | DATE | Added in 000011 |
+| created_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
+| updated_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP`, added in 000011 |
 
-Relationship
-
-* One project belongs to one creator.
-* One project has many reports.
-* One project has many materials.
-* One project has many documents.
-
----
-
-# Project Members Table
+### project_members
 
 Associates users with projects.
 
-| Column     | Type      |
-| ---------- | --------- |
-| id         | UUID      |
-| project_id | UUID      |
-| user_id    | UUID      |
-| role       | VARCHAR   |
-| joined_at  | TIMESTAMP |
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| project_id | UUID | FK to `projects(id)` ON DELETE CASCADE |
+| user_id | UUID | FK to `users(id)` ON DELETE CASCADE |
+| role | VARCHAR(50) | Required |
+| joined_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
 
-This enables many users to work on many projects.
+Constraints/indexes:
 
----
+* Unique `(project_id, user_id)`
+* Indexes on `project_id`, `user_id`
 
-# Daily Reports Table
+### blueprints
+
+Stores blueprint metadata for a project.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| project_id | UUID | FK to `projects(id)` ON DELETE CASCADE |
+| title | VARCHAR(255) | Required |
+| description | TEXT | Optional |
+| file_path | TEXT | Required |
+| version | INT | Default 1 |
+| uploader_id | VARCHAR(255) | Required |
+| created_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
+| updated_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
+
+### specs
+
+Stores project specifications.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| project_id | UUID | FK to `projects(id)` ON DELETE CASCADE |
+| title | VARCHAR(255) | Required |
+| description | TEXT | Required |
+| section_code | VARCHAR(50) | Required |
+| created_by | VARCHAR(255) | Required |
+| created_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
+| updated_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
+
+### materials
+
+Tracks material deliveries/records.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| project_id | UUID | FK to `projects(id)` ON DELETE CASCADE |
+| material_name | VARCHAR(255) | Required |
+| quantity | DECIMAL(14,3) | Required, `> 0` |
+| unit | VARCHAR(50) | Required |
+| unit_cost | DECIMAL(14,2) | Default 0, `>= 0` |
+| supplier | VARCHAR(255) | Optional |
+| delivery_date | DATE | Optional |
+| recorded_by | VARCHAR(255) | Optional |
+| created_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
+
+Indexes: `project_id`, `delivery_date`.
+
+### daily_reports
 
 Stores daily site reports.
 
-| Column          | Type      |
-| --------------- | --------- |
-| id              | UUID      |
-| project_id      | UUID      |
-| user_id         | UUID      |
-| report_date     | DATE      |
-| completed_work  | TEXT      |
-| workers_present | INTEGER   |
-| remarks         | TEXT      |
-| created_at      | TIMESTAMP |
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| project_id | UUID | FK to `projects(id)` ON DELETE CASCADE |
+| user_id | VARCHAR(255) | Required |
+| report_date | DATE | Required |
+| completed_work | TEXT | Required |
+| workers_present | INTEGER | Default 0, `>= 0` |
+| remarks | TEXT | Optional |
+| created_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
 
-Each report belongs to one project.
+Indexes: `project_id`, `report_date`.
 
----
+### boq_items
 
-# Materials Table
+Stores Bill of Quantities line items.
 
-Tracks materials delivered and used.
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| project_id | UUID | FK to `projects(id)` ON DELETE CASCADE |
+| item_name | VARCHAR(255) | Required |
+| quantity | DECIMAL(14,3) | Required, `> 0` |
+| unit | VARCHAR(50) | Optional |
+| estimated_cost | DECIMAL(14,2) | Default 0, `>= 0` |
+| actual_cost | DECIMAL(14,2) | Default 0, `>= 0` |
+| created_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
+| updated_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
 
-| Column        | Type      |
-| ------------- | --------- |
-| id            | UUID      |
-| project_id    | UUID      |
-| material_name | VARCHAR   |
-| quantity      | DECIMAL   |
-| unit          | VARCHAR   |
-| unit_cost     | DECIMAL   |
-| supplier      | VARCHAR   |
-| delivery_date | DATE      |
-| created_at    | TIMESTAMP |
+Index: `project_id`.
 
-Future AI features will analyse this data.
+### project_documents
 
----
+Stores document metadata; files live in storage.
 
-# BOQ Table
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| project_id | UUID | FK to `projects(id)` ON DELETE CASCADE |
+| uploaded_by | VARCHAR(255) | Required |
+| filename | VARCHAR(255) | Required |
+| file_type | VARCHAR(100) | Optional MIME/type label |
+| file_size | BIGINT | Default 0 |
+| storage_path | TEXT | Required storage key/path |
+| category | VARCHAR(50) | Optional |
+| uploaded_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
 
-Stores Bills of Quantities.
+Index: `project_id`.
 
-| Column         | Type      |
-| -------------- | --------- |
-| id             | UUID      |
-| project_id     | UUID      |
-| item_name      | VARCHAR   |
-| quantity       | DECIMAL   |
-| unit           | VARCHAR   |
-| estimated_cost | DECIMAL   |
-| actual_cost    | DECIMAL   |
-| created_at     | TIMESTAMP |
+### newsletter_subscribers
 
----
+Stores newsletter signups.
 
-# Documents Table
-
-Stores project documents.
-
-| Column       | Type      |
-| ------------ | --------- |
-| id           | UUID      |
-| project_id   | UUID      |
-| uploaded_by  | UUID      |
-| filename     | VARCHAR   |
-| file_type    | VARCHAR   |
-| file_size    | BIGINT    |
-| storage_path | TEXT      |
-| uploaded_at  | TIMESTAMP |
-
-Only metadata is stored in PostgreSQL.
-
-The files themselves are stored separately.
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | UUID | Primary key |
+| email | VARCHAR(255) | Required, unique |
+| subscribed_at | TIMESTAMPTZ | Default `CURRENT_TIMESTAMP` |
 
 ---
 
-# Suppliers Table
+## Relationships
 
-Stores supplier information.
-
-| Column         | Type      |
-| -------------- | --------- |
-| id             | UUID      |
-| company_name   | VARCHAR   |
-| contact_person | VARCHAR   |
-| phone          | VARCHAR   |
-| email          | VARCHAR   |
-| location       | VARCHAR   |
-| created_at     | TIMESTAMP |
+* One project has many blueprints, specs, members, materials, daily reports, BOQ items, and documents.
+* Users and projects have a many-to-many relationship through `project_members`.
+* Most child records are removed when a project is deleted via `ON DELETE CASCADE`.
 
 ---
 
-# Quotations Table
+## Not Yet Implemented as Tables
 
-Stores supplier quotations.
+The earlier design discussed tables that are not present in current migrations:
 
-| Column         | Type      |
-| -------------- | --------- |
-| id             | UUID      |
-| supplier_id    | UUID      |
-| project_id     | UUID      |
-| total_price    | DECIMAL   |
-| quotation_date | DATE      |
-| status         | VARCHAR   |
-| created_at     | TIMESTAMP |
-
----
-
-# User Roles
-
-Supported roles include:
-
-* Administrator
-* Contractor
-* Site Engineer
-* Quantity Surveyor
-* Architect
-* Supplier
-* Client
-
-Role-based permissions are enforced in the application.
-
----
-
-# Relationships
-
-## One-to-Many
-
-User
-
-↓
-
-Projects
-
----
-
-Project
-
-↓
-
-Daily Reports
-
----
-
-Project
-
-↓
-
-Materials
-
----
-
-Project
-
-↓
-
-Documents
-
----
-
-Project
-
-↓
-
-BOQ Items
-
----
-
-Supplier
-
-↓
-
-Quotations
-
----
-
-# Many-to-Many
-
-Users
-
-↓
-
-Project Members
-
-↓
-
-Projects
-
-A user may belong to many projects.
-
-A project may contain many users.
-
----
-
-# Indexes
-
-Indexes improve query performance.
-
-Recommended indexes:
-
-* email
-* project_id
-* supplier_id
-* report_date
-* created_at
-
----
-
-# Constraints
-
-The database enforces:
-
-* Primary Keys
-* Foreign Keys
-* Unique emails
-* Required fields
-* Valid relationships
-
-This prevents invalid data from being stored.
-
----
-
-# Soft Deletes
-
-Important business records should not be permanently deleted.
-
-Instead, future versions may include:
-
-| Column     |
-| ---------- |
-| deleted_at |
-
-This allows records to be restored if needed.
-
----
-
-# Audit Fields
-
-Every major table should include:
-
-```text
-created_at
-
-updated_at
-```
-
-Future versions may also include:
-
-```text
-created_by
-
-updated_by
-```
-
----
-
-# Data Flow
-
-```text
-User
-   │
-   ▼
-Browser
-   │
-   ▼
-HTTP Request
-   │
-   ▼
-Business Logic
-   │
-   ▼
-PostgreSQL
-   │
-   ▼
-Response
-```
-
----
-
-# Future Database Expansion
-
-The following tables are planned for future releases:
-
+* Suppliers
+* Quotations
 * Notifications
-* Payments
-* Equipment
-* Inventory
-* AI Predictions
-* Risk Analysis
-* Activity Logs
-* Chat Messages
-* Project Milestones
-* Tasks
-* Attendance
-* Weather Records
+* Payments/equipment/inventory/AI prediction tables
+
+Add these through new migrations when the corresponding features are implemented.
 
 ---
 
-# Database Design Principles
+## Schema Notes
 
-VECAI follows these principles:
-
-* Normalize data where practical.
-* Avoid duplicate information.
-* Use foreign keys to maintain integrity.
-* Store timestamps for auditing.
-* Keep business rules in the application layer.
-* Design for scalability without sacrificing simplicity.
-
-The database serves as the foundation of the platform, enabling accurate project management today and AI-powered decision support in future releases.
+* Some identifier columns (`owner_id`, `uploader_id`, `created_by`, `recorded_by`, `user_id` in reports/documents) are stored as `VARCHAR(255)` rather than UUID foreign keys. Future migrations may normalize these where appropriate.
+* Timestamps are included on most major tables; audit fields can be expanded as needed.
+* Prefer additive migrations and avoid editing applied migrations.

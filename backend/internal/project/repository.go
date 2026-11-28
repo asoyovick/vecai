@@ -6,6 +6,7 @@ type Repository interface {
 	CreateProject(ctx context.Context, project *Project) error
 	GetProjectByID(ctx context.Context, id string) (*Project, error)
 	ListProjectsByOwner(ctx context.Context, ownerID string) ([]*Project, error)
+	ListProjectsByUser(ctx context.Context, userID string) ([]*Project, error)
 	ListAllProjects(ctx context.Context) ([]*Project, error)
 	UpdateProject(ctx context.Context, project *Project) error
 	DeleteProject(ctx context.Context, id string) error
@@ -20,5 +21,6 @@ type Repository interface {
 	GetMembersByProject(ctx context.Context, projectID string) ([]*Member, error)
 	GetMemberByID(ctx context.Context, projectID, memberID string) (*Member, error)
 	GetMemberByUserID(ctx context.Context, projectID, userID string) (*Member, error)
+	IsMember(ctx context.Context, projectID, userID string) (bool, error)
 	DeleteMember(ctx context.Context, projectID, memberID string) error
 }

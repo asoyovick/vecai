@@ -8,68 +8,77 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestAuthMiddlewareRequiresToken(t *testing.T) {
+func TestAuthMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(AuthMiddleware([]byte("test-secret-that-is-long-enough-32")))
-	r.GET("/protected", func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
+	secret := []byte("test-secret")
+	t.Setenv("JWT_SECRET", "test-secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
-func TestAuthMiddlewareRejectsInvalidToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(AuthMiddleware([]byte("test-secret-that-is-long-enough-32")))
-	r.GET("/protected", func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	req.Header.Set("Authorization", "Bearer not-a-valid-token")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
-func TestAuthMiddlewareAcceptsValidTokenWithEnv(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	t.Setenv("APP_ENV", "development")
-	t.Setenv("JWT_SECRET", "test-secret-that-is-long-enough-32")
-
-	token, err := GenerateToken(User{ID: "user-1", Email: "u@example.com", Role: RoleOwner})
+	user := User{ID: "u1", Email: "u@example.com", Role: RoleOwner}
+	token, err := GenerateToken(user)
 	if err != nil {
-		t.Fatalf("generate token: %v", err)
+		t.Fatalf("GenerateToken: %v", err)
 	}
 
+	tests := []struct {
+		name       string
+		authHeader string
+		wantStatus int
+	}{
+		{name: "valid token", authHeader: "Bearer " + token, wantStatus: http.StatusOK},
+		{name: "missing header", authHeader: "", wantStatus: http.StatusUnauthorized},
+		{name: "bad format", authHeader: token, wantStatus: http.StatusUnauthorized},
+		{name: "invalid token", authHeader: "Bearer bad.token.value", wantStatus: http.StatusUnauthorized},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := gin.New()
+			r.GET("/protected", AuthMiddleware(secret), func(c *gin.Context) {
+				id, _ := UserIDFromContext(c)
+				c.JSON(http.StatusOK, gin.H{"id": id})
+			})
+			req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+			if tt.authHeader != "" {
+				req.Header.Set("Authorization", tt.authHeader)
+			}
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+			if w.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d, body=%s", w.Code, tt.wantStatus, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestRequireRoles(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	secret := []byte("test-secret")
+	t.Setenv("JWT_SECRET", "test-secret")
+
+	ownerToken, _ := GenerateToken(User{ID: "u1", Email: "o@example.com", Role: RoleOwner})
+	engineerToken, _ := GenerateToken(User{ID: "u2", Email: "e@example.com", Role: RoleEngineer})
+
 	r := gin.New()
-	r.Use(AuthMiddleware([]byte("test-secret-that-is-long-enough-32")))
-	r.GET("/protected", func(c *gin.Context) {
-		id, _ := UserIDFromContext(c)
-		if id != "user-1" {
-			c.Status(http.StatusInternalServerError)
-			return
-		}
+	r.GET("/admin", AuthMiddleware(secret), RequireRoles(RoleOwner), func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	reqOwner := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	reqOwner.Header.Set("Authorization", "Bearer "+ownerToken)
+	wOwner := httptest.NewRecorder()
+	r.ServeHTTP(wOwner, reqOwner)
+	if wOwner.Code != http.StatusOK {
+		t.Fatalf("owner status = %d", wOwner.Code)
+	}
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	reqEng := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	reqEng.Header.Set("Authorization", "Bearer "+engineerToken)
+	wEng := httptest.NewRecorder()
+	r.ServeHTTP(wEng, reqEng)
+	if wEng.Code != http.StatusForbidden {
+		t.Fatalf("engineer status = %d, want 403", wEng.Code)
+	}
+}
+
 	}
 }

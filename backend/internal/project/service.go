@@ -82,7 +82,7 @@ func (s *Service) ListProjectsByOwner(ctx context.Context, ownerID string) ([]*P
 // ListProjects returns all projects visible to the given user: projects they
 // own plus projects they are a team member of.
 func (s *Service) ListProjects(ctx context.Context, userID string) ([]*Project, error) {
-	return s.repo.ListProjectsByOwner(ctx, userID)
+	return s.repo.ListProjectsByUser(ctx, userID)
 }
 
 // UpdateProject applies a partial update to an existing project.
@@ -189,6 +189,18 @@ func (s *Service) AddSpec(ctx context.Context, projectID, userID string, req Add
 
 func (s *Service) GetSpecsByProject(ctx context.Context, projectID string) ([]*Spec, error) {
 	return s.repo.GetSpecsByProject(ctx, projectID)
+}
+
+// HasAccess reports whether userID can access projectID as owner or member.
+func (s *Service) HasAccess(ctx context.Context, projectID, userID string) (bool, error) {
+	p, err := s.repo.GetProjectByID(ctx, projectID)
+	if err != nil {
+		return false, err
+	}
+	if p.OwnerID == userID {
+		return true, nil
+	}
+	return s.repo.IsMember(ctx, projectID, userID)
 }
 
 // InviteMember adds a user to a project team with the given role.

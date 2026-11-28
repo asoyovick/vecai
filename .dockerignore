@@ -1,0 +1,13 @@
+.git
+.github
+frontend/node_modules
+frontend/.next
+frontend/out
+bin
+tmp
+*.log
+.env
+.env.*
+backend/uploads
+coverage.out
+coverage.html

@@ -48,7 +48,7 @@ func main() {
 		log.Fatalf("[FATAL] Migration failed: %v", err)
 	}
 
-	// ---- Domain modules (modular monolith, docs/architechture.md) ----
+	// ---- Domain modules (modular monolith, docs/architecture.md) ----
 	userRepo := auth.NewPostgresUserRepository(dbConn)
 	authService := auth.NewService(userRepo)
 	authHandler := auth.NewHandler(authService)
@@ -66,7 +66,18 @@ func main() {
 	reportsHandler := reports.NewHandler(reportsService)
 
 	documentsRepo := documents.NewPostgresRepository(dbConn)
-	documentsStorer := storage.NewLocalStorage(uploadDir)
+	var documentsStorer storage.Storer
+	if strings.EqualFold(getEnv("STORAGE_DRIVER", "local"), "s3") {
+		s3Storer, err := storage.NewS3Storage(context.Background())
+		if err != nil {
+			log.Fatalf("[FATAL] Could not initialize S3 storage: %v", err)
+		}
+		documentsStorer = s3Storer
+		log.Println("[INIT] Using S3 document storage")
+	} else {
+		documentsStorer = storage.NewLocalStorage(uploadDir)
+		log.Println("[INIT] Using local document storage")
+	}
 	documentsService := documents.NewService(documentsRepo, documentsStorer)
 	documentsHandler := documents.NewHandler(documentsService)
 

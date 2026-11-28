@@ -79,3 +79,6 @@ func TestRequireRoles(t *testing.T) {
 		t.Fatalf("engineer status = %d, want 403", wEng.Code)
 	}
 }
+
+	}
+}

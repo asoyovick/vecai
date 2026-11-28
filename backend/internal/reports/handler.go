@@ -19,8 +19,9 @@ func NewHandler(service *Service) *Handler {
 }
 
 // RegisterRoutes mounts daily report endpoints under /projects/:id/reports.
-func (h *Handler) RegisterRoutes(api *gin.RouterGroup) {
+func (h *Handler) RegisterRoutes(api *gin.RouterGroup, access gin.HandlerFunc) {
 	group := api.Group("/projects/:id/reports")
+	group.Use(access)
 	{
 		group.POST("", h.Create)
 		group.GET("", h.List)
@@ -90,15 +91,23 @@ func (h *Handler) Get(c *gin.Context) {
 }
 
 func (h *Handler) Update(c *gin.Context) {
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
 	var req CreateRequest
 	if !api.BindJSON(c, &req) {
 		return
 	}
-	report, err := h.service.Update(c.Request.Context(), c.Param("id"), c.Param("reportId"), req)
+
+	report, err := h.service.Update(c.Request.Context(), c.Param("id"), c.Param("reportId"), userID, req)
 	if err != nil {
 		handleError(c, err)
 		return
 	}
+
 	api.OK(c, http.StatusOK, "Daily report updated", report)
 }
 

@@ -67,7 +67,13 @@ export function Navbar() {
           {/* CTA Action Button */}
           <div className="hidden lg:flex items-center gap-4">
             <Link
-              href="/get-started"
+              href="/login"
+              className="text-sm font-semibold text-[#F28500] hover:text-white transition-colors duration-200"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#F28500] hover:bg-[#F28500]/90 text-white font-bold text-sm shadow-md transition-all duration-200 hover:scale-[1.02]"
             >
               <span>Get Started</span>
@@ -114,14 +120,23 @@ export function Navbar() {
                 </Link>
               ))}
 
-              <Link
-                href="/get-started"
-                onClick={() => setMobileMenuOpen(false)}
-                className="mt-2 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#F28500] text-white font-bold text-base shadow-md"
-              >
-                <span>Get Started</span>
-                <ArrowRight className="w-5 h-5" />
-              </Link>
+              <div className="mt-2 flex flex-col gap-3">
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full inline-flex items-center justify-center px-5 py-3 rounded-xl border border-[#F28500]/50 text-[#F28500] font-bold text-base"
+                >
+                  <span>Sign in</span>
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#F28500] text-white font-bold text-base shadow-md"
+                >
+                  <span>Get Started</span>
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+              </div>
             </div>
           </motion.div>
         )}

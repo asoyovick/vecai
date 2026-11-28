@@ -31,7 +31,10 @@ func main() {
 	dbConnStr := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/vecai?sslmode=disable")
 	migrationsPath := getEnv("MIGRATIONS_PATH", "backend/db/migrations")
 	uploadDir := getEnv("UPLOAD_DIR", "backend/uploads")
-	jwtSecret := auth.SecretFromEnv()
+	jwtSecret, err := auth.SecretFromEnv()
+	if err != nil {
+		log.Fatalf("[FATAL] Invalid JWT configuration: %v", err)
+	}
 
 	log.Println("[INIT] Connecting to PostgreSQL...")
 	dbConn, err := db.InitDB(dbConnStr)
@@ -91,20 +94,22 @@ func main() {
 	router.Use(api.CORSMiddleware(allowedOrigins()))
 
 	apiGroup := router.Group("/api/v1")
-	apiGroup.Use(auth.OptionalAuthMiddleware(jwtSecret))
 
-	authHandler.RegisterRoutes(apiGroup)
-	projectHandler.RegisterRoutes(apiGroup)
-	materialsHandler.RegisterRoutes(apiGroup)
-	reportsHandler.RegisterRoutes(apiGroup)
-	documentsHandler.RegisterRoutes(apiGroup)
-	boqHandler.RegisterRoutes(apiGroup)
+	// Public endpoints.
 	newsletterHandler.RegisterRoutes(apiGroup)
 
-	// Protected group for future role-restricted endpoints.
-	adminGroup := apiGroup.Group("")
-	adminGroup.Use(auth.AuthMiddleware(jwtSecret))
-	_ = adminGroup
+	// Protected endpoints require a valid JWT.
+	protected := apiGroup.Group("")
+	protected.Use(auth.AuthMiddleware(jwtSecret))
+
+	projectAccess := project.RequireProjectAccess(projectService)
+
+	authHandler.RegisterRoutes(apiGroup, protected)
+	projectHandler.RegisterRoutes(protected, projectAccess)
+	materialsHandler.RegisterRoutes(protected, projectAccess)
+	reportsHandler.RegisterRoutes(protected, projectAccess)
+	documentsHandler.RegisterRoutes(protected, projectAccess)
+	boqHandler.RegisterRoutes(protected, projectAccess)
 
 	router.GET("/health", func(c *gin.Context) {
 		api.OK(c, http.StatusOK, "ok", gin.H{"time": time.Now().UTC()})

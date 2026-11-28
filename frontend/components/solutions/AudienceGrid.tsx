@@ -28,7 +28,7 @@ export function AudienceGrid() {
     <Section>
       <Container>
         <div className="mx-auto max-w-[560px] text-center">
-          <Eyebrow className="mx-auto">Who it's for</Eyebrow>
+          <Eyebrow className="mx-auto">Who it&apos;s for</Eyebrow>
           <h2 className="mt-6 text-[length:var(--text-heading-md)] leading-[var(--text-heading-md--line-height)] tracking-[var(--text-heading-md--letter-spacing)] font-bold text-[var(--color-forest)]">
             Built for every stakeholder on a project
           </h2>

@@ -75,6 +75,15 @@ func (f *fakeRepo) GetMembersByProject(context.Context, string) ([]*Member, erro
 func (f *fakeRepo) GetMemberByID(context.Context, string, string) (*Member, error) {
 	return nil, ErrMemberNotFound
 }
+func (f *fakeRepo) GetMemberByUserID(_ context.Context, projectID, userID string) (*Member, error) {
+	for i := range f.members {
+		if f.members[i].ProjectID == projectID && f.members[i].UserID == userID {
+			m := f.members[i]
+			return &m, nil
+		}
+	}
+	return nil, ErrMemberNotFound
+}
 func (f *fakeRepo) IsMember(_ context.Context, projectID, userID string) (bool, error) {
 	for _, m := range f.members {
 		if m.ProjectID == projectID && m.UserID == userID {

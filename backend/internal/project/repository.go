@@ -20,6 +20,7 @@ type Repository interface {
 	AddMember(ctx context.Context, member *Member) error
 	GetMembersByProject(ctx context.Context, projectID string) ([]*Member, error)
 	GetMemberByID(ctx context.Context, projectID, memberID string) (*Member, error)
+	GetMemberByUserID(ctx context.Context, projectID, userID string) (*Member, error)
 	IsMember(ctx context.Context, projectID, userID string) (bool, error)
 	DeleteMember(ctx context.Context, projectID, memberID string) error
 }

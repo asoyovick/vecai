@@ -278,6 +278,16 @@ func (r *PostgresRepository) GetMemberByID(ctx context.Context, projectID, membe
 	return scanMember(r.db.QueryRowContext(ctx, query, projectID, memberID))
 }
 
+func (r *PostgresRepository) GetMemberByUserID(ctx context.Context, projectID, userID string) (*Member, error) {
+	query := `
+		SELECT ` + memberColumns + `
+		FROM project_members pm
+		LEFT JOIN users u ON u.id = pm.user_id
+		WHERE pm.project_id = $1 AND pm.user_id = $2
+	`
+	return scanMember(r.db.QueryRowContext(ctx, query, projectID, userID))
+}
+
 func (r *PostgresRepository) IsMember(ctx context.Context, projectID, userID string) (bool, error) {
 	var exists bool
 	err := r.db.QueryRowContext(ctx,

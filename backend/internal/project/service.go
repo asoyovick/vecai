@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -54,6 +55,24 @@ func (s *Service) CreateProject(ctx context.Context, ownerID string, req CreateR
 
 func (s *Service) GetProjectByID(ctx context.Context, id string) (*Project, error) {
 	return s.repo.GetProjectByID(ctx, id)
+}
+
+// AuthorizeProjectAccess verifies the user is the project owner or a project
+// member. It returns the project when access is allowed.
+func (s *Service) AuthorizeProjectAccess(ctx context.Context, projectID, userID string) (*Project, error) {
+	p, err := s.repo.GetProjectByID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if p.OwnerID == userID {
+		return p, nil
+	}
+	if _, err := s.repo.GetMemberByUserID(ctx, projectID, userID); err == nil {
+		return p, nil
+	} else if !errors.Is(err, ErrMemberNotFound) {
+		return nil, err
+	}
+	return nil, ErrAccessDenied
 }
 
 func (s *Service) ListProjectsByOwner(ctx context.Context, ownerID string) ([]*Project, error) {

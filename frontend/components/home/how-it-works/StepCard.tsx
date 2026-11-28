@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import type { StepCardProps } from "./types";
 
-export function StepCard({ step, isLast }: StepCardProps) {
+export function StepCard({ step }: StepCardProps) {
   const { stepNumber, title, description, icon: Icon } = step;
 
   return (

@@ -57,7 +57,7 @@ export function CTA() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <Link
-            href="/get-started"
+            href="/register"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#F28500] hover:bg-[#F28500]/90 text-white font-bold text-base shadow-lg transition-all duration-200 hover:scale-[1.02]"
           >
             <span>Get Started Free</span>

@@ -75,12 +75,12 @@ func (r *PostgresRepository) ListByProject(ctx context.Context, projectID string
 func (r *PostgresRepository) Update(ctx context.Context, report *Report) error {
 	query := `
 		UPDATE daily_reports
-		SET report_date = $3::DATE, completed_work = $4, workers_present = $5, remarks = $6
-		WHERE project_id = $1 AND id = $2
+		SET report_date = $1::DATE, completed_work = $2, workers_present = $3, remarks = $4
+		WHERE project_id = $5 AND id = $6
 	`
 	result, err := r.db.ExecContext(ctx, query,
-		report.ProjectID, report.ID, report.ReportDate,
-		report.CompletedWork, report.WorkersPresent, report.Remarks,
+		report.ReportDate, report.CompletedWork, report.WorkersPresent, report.Remarks,
+		report.ProjectID, report.ID,
 	)
 	if err != nil {
 		return err

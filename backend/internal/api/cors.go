@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,6 +17,8 @@ func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
+
+		// 1. Check if the incoming Origin header matches allowed origins
 		if origin != "" && allowed[origin] {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 			c.Writer.Header().Set("Vary", "Origin")
@@ -23,8 +27,15 @@ func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
 			c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		}
 
+		// 2. Handle preflight OPTIONS requests
 		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
+			// If origin wasn't allowed or present, reject the preflight request
+			if origin == "" || !allowed[origin] {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			// Respond with 204 No Content (with CORS headers attached above)
+			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
 

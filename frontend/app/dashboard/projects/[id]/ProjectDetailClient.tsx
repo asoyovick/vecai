@@ -36,6 +36,15 @@ import {
   type DailyReport,
   type ReportSummary,
 } from "@/lib/reports";
+import {
+  compareBoq,
+  createBoqItem,
+  deleteBoqItem,
+  listBoqItems,
+  type BoqItem,
+  type BoqItemInput,
+  type BoqSummary,
+} from "@/lib/boq";
 
 const inputClasses =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#F28500] focus:ring-2 focus:ring-[#F28500]/20";
@@ -75,6 +84,18 @@ export default function ProjectDetailPage() {
     remarks: "",
   });
   const [savingReport, setSavingReport] = useState(false);
+  const [boqItems, setBoqItems] = useState<BoqItem[] | null>(null);
+  const [boqSummary, setBoqSummary] = useState<BoqSummary | null>(null);
+  const [boqLoading, setBoqLoading] = useState(false);
+  const [boqError, setBoqError] = useState<string | null>(null);
+  const [savingBoq, setSavingBoq] = useState(false);
+  const [boqForm, setBoqForm] = useState<BoqItemInput>({
+    item_name: "",
+    quantity: 1,
+    unit: "",
+    estimated_cost: 0,
+    actual_cost: 0,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +148,9 @@ export default function ProjectDetailPage() {
     }
     if (activeTab === "reports" && project) {
       loadReports();
+    }
+    if (activeTab === "boq" && project) {
+      loadBoq();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, project?.id]);
@@ -268,6 +292,60 @@ export default function ProjectDetailPage() {
       await loadReports();
     } catch (err) {
       setReportError(err instanceof ApiError ? err.message : "Failed to delete report.");
+    }
+  }
+
+  async function loadBoq() {
+    if (!project) return;
+    setBoqLoading(true);
+    setBoqError(null);
+    try {
+      const token = getToken()!;
+      const [items, summary] = await Promise.all([
+        listBoqItems(token, project.id),
+        compareBoq(token, project.id),
+      ]);
+      setBoqItems(items);
+      setBoqSummary(summary);
+    } catch (err) {
+      setBoqError(err instanceof ApiError ? err.message : "Failed to load BOQ.");
+    } finally {
+      setBoqLoading(false);
+    }
+  }
+
+  async function handleCreateBoq(e: React.FormEvent) {
+    e.preventDefault();
+    if (!project) return;
+    setSavingBoq(true);
+    setBoqError(null);
+    try {
+      const token = getToken()!;
+      await createBoqItem(token, project.id, {
+        ...boqForm,
+        quantity: Number(boqForm.quantity),
+        estimated_cost: Number(boqForm.estimated_cost) || 0,
+        actual_cost: Number(boqForm.actual_cost) || 0,
+      });
+      setBoqForm({ item_name: "", quantity: 1, unit: "", estimated_cost: 0, actual_cost: 0 });
+      await loadBoq();
+    } catch (err) {
+      setBoqError(err instanceof ApiError ? err.message : "Failed to create BOQ item.");
+    } finally {
+      setSavingBoq(false);
+    }
+  }
+
+  async function handleDeleteBoq(itemId: string) {
+    if (!project) return;
+    if (!confirm("Delete this BOQ item?")) return;
+    setBoqError(null);
+    try {
+      const token = getToken()!;
+      await deleteBoqItem(token, project.id, itemId);
+      await loadBoq();
+    } catch (err) {
+      setBoqError(err instanceof ApiError ? err.message : "Failed to delete BOQ item.");
     }
   }
 
@@ -578,7 +656,31 @@ export default function ProjectDetailPage() {
           )}
           {activeTab === "boq" && (
             <div>
-              <p className="text-sm text-slate-500">BOQ management UI (issue #13) will be shown here.</p>
+              <h3 className="text-lg font-bold text-[#000080] mb-4">BOQ</h3>
+              {boqError && <p role="alert" className="mb-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">{boqError}</p>}
+              {boqSummary && (
+                <div className="mb-6 grid gap-4 sm:grid-cols-4">
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Items</p><p className="text-xl font-bold text-slate-800">{boqSummary.total_items}</p></div>
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Estimated</p><p className="text-xl font-bold text-slate-800">{boqSummary.total_estimated_cost.toFixed(2)}</p></div>
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Actual</p><p className="text-xl font-bold text-slate-800">{boqSummary.total_actual_cost.toFixed(2)}</p></div>
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Variance</p><p className="text-xl font-bold text-slate-800">{boqSummary.variance.toFixed(2)}</p></div>
+                </div>
+              )}
+              <form onSubmit={handleCreateBoq} className="mb-6 grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Item name</label><input className={inputClasses} value={boqForm.item_name} onChange={(e)=>setBoqForm({...boqForm,item_name:e.target.value})} required /></div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Quantity</label><input type="number" min={0} step="any" className={inputClasses} value={boqForm.quantity} onChange={(e)=>setBoqForm({...boqForm,quantity:Number(e.target.value)})} required /></div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Unit</label><input className={inputClasses} value={boqForm.unit||""} onChange={(e)=>setBoqForm({...boqForm,unit:e.target.value})} /></div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Estimated cost</label><input type="number" min={0} step="any" className={inputClasses} value={boqForm.estimated_cost} onChange={(e)=>setBoqForm({...boqForm,estimated_cost:Number(e.target.value)})} /></div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Actual cost</label><input type="number" min={0} step="any" className={inputClasses} value={boqForm.actual_cost} onChange={(e)=>setBoqForm({...boqForm,actual_cost:Number(e.target.value)})} /></div>
+                <div className="sm:col-span-2"><button type="submit" disabled={savingBoq} className="rounded-xl bg-[#F28500] px-4 py-2 text-sm font-semibold text-white hover:bg-[#d97706] disabled:opacity-50">{savingBoq?"Saving…":"Add BOQ item"}</button></div>
+              </form>
+              {boqLoading && <p className="text-sm text-slate-500">Loading BOQ…</p>}
+              {!boqLoading && boqItems && boqItems.length === 0 && <p className="text-sm text-slate-500">No BOQ items yet.</p>}
+              {!boqLoading && boqItems && boqItems.length > 0 && (
+                <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr className="text-left text-slate-500 border-b"><th className="py-2 pr-4">Item</th><th className="py-2 pr-4">Qty</th><th className="py-2 pr-4">Unit</th><th className="py-2 pr-4">Estimated</th><th className="py-2 pr-4">Actual</th><th className="py-2 pr-4"></th></tr></thead><tbody>
+                  {boqItems.map((it) => (<tr key={it.id} className="border-b border-slate-100"><td className="py-2 pr-4 font-medium text-slate-800">{it.item_name}</td><td className="py-2 pr-4">{it.quantity}</td><td className="py-2 pr-4">{it.unit||"—"}</td><td className="py-2 pr-4">{it.estimated_cost}</td><td className="py-2 pr-4">{it.actual_cost}</td><td className="py-2 pr-4"><button type="button" onClick={()=>handleDeleteBoq(it.id)} className="text-xs text-red-600 hover:underline">Delete</button></td></tr>))}
+                </tbody></table></div>
+              )}
             </div>
           )}
           {activeTab === "reports" && (

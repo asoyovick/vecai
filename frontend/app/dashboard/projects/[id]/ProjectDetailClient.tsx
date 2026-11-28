@@ -45,6 +45,13 @@ import {
   type BoqItemInput,
   type BoqSummary,
 } from "@/lib/boq";
+import {
+  deleteDocument,
+  downloadDocument,
+  listDocuments,
+  uploadDocument,
+  type ProjectDocument,
+} from "@/lib/documents";
 
 const inputClasses =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#F28500] focus:ring-2 focus:ring-[#F28500]/20";
@@ -96,6 +103,10 @@ export default function ProjectDetailPage() {
     estimated_cost: 0,
     actual_cost: 0,
   });
+  const [documents, setDocuments] = useState<ProjectDocument[] | null>(null);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +162,9 @@ export default function ProjectDetailPage() {
     }
     if (activeTab === "boq" && project) {
       loadBoq();
+    }
+    if (activeTab === "documents" && project) {
+      loadDocuments();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, project?.id]);
@@ -346,6 +360,50 @@ export default function ProjectDetailPage() {
       await loadBoq();
     } catch (err) {
       setBoqError(err instanceof ApiError ? err.message : "Failed to delete BOQ item.");
+    }
+  }
+
+  async function loadDocuments() {
+    if (!project) return;
+    setDocumentsLoading(true);
+    setDocumentError(null);
+    try {
+      const token = getToken()!;
+      setDocuments(await listDocuments(token, project.id));
+    } catch (err) {
+      setDocumentError(err instanceof ApiError ? err.message : "Failed to load documents.");
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }
+
+  async function handleUploadDocument(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!project || !e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    setUploadingDoc(true);
+    setDocumentError(null);
+    try {
+      const token = getToken()!;
+      await uploadDocument(token, project.id, file);
+      await loadDocuments();
+    } catch (err) {
+      setDocumentError(err instanceof ApiError ? err.message : "Failed to upload document.");
+    } finally {
+      setUploadingDoc(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleDeleteDocument(documentId: string) {
+    if (!project) return;
+    if (!confirm("Delete this document?")) return;
+    setDocumentError(null);
+    try {
+      const token = getToken()!;
+      await deleteDocument(token, project.id, documentId);
+      await loadDocuments();
+    } catch (err) {
+      setDocumentError(err instanceof ApiError ? err.message : "Failed to delete document.");
     }
   }
 
@@ -794,7 +852,30 @@ export default function ProjectDetailPage() {
           )}
           {activeTab === "documents" && (
             <div>
-              <p className="text-sm text-slate-500">Documents upload/download UI (issue #14) will be shown here.</p>
+              <h3 className="text-lg font-bold text-[#000080] mb-4">Documents</h3>
+              {documentError && <p role="alert" className="mb-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">{documentError}</p>}
+              <div className="mb-6">
+                <label className="inline-flex cursor-pointer rounded-xl bg-[#F28500] px-4 py-2 text-sm font-semibold text-white hover:bg-[#d97706]">
+                  {uploadingDoc ? "Uploading…" : "Upload document"}
+                  <input type="file" className="hidden" onChange={handleUploadDocument} disabled={uploadingDoc} />
+                </label>
+              </div>
+              {documentsLoading && <p className="text-sm text-slate-500">Loading documents…</p>}
+              {!documentsLoading && documents && documents.length === 0 && <p className="text-sm text-slate-500">No documents uploaded yet.</p>}
+              {!documentsLoading && documents && documents.length > 0 && (
+                <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr className="text-left text-slate-500 border-b"><th className="py-2 pr-4">Filename</th><th className="py-2 pr-4">Type</th><th className="py-2 pr-4">Size</th><th className="py-2 pr-4">Uploaded</th><th className="py-2 pr-4"></th></tr></thead><tbody>
+                  {documents.map((d) => (<tr key={d.id} className="border-b border-slate-100">
+                    <td className="py-2 pr-4 font-medium text-slate-800">{d.filename}</td>
+                    <td className="py-2 pr-4">{d.file_type || "—"}</td>
+                    <td className="py-2 pr-4">{d.file_size}</td>
+                    <td className="py-2 pr-4">{new Date(d.uploaded_at).toLocaleDateString()}</td>
+                    <td className="py-2 pr-4 space-x-3">
+                      <button type="button" onClick={() => { const token = getToken(); if (token) downloadDocument(token, project.id, d.id, d.filename).catch((e) => setDocumentError(e instanceof ApiError ? e.message : "Download failed")); }} className="text-xs text-[#F28500] hover:underline">Download</button>
+                      <button type="button" onClick={() => handleDeleteDocument(d.id)} className="text-xs text-red-600 hover:underline">Delete</button>
+                    </td>
+                  </tr>))}
+                </tbody></table></div>
+              )}
             </div>
           )}
         </div>

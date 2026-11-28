@@ -281,14 +281,31 @@ Sprint 01 is complete when:
 
 ---
 
-# Lessons Learned
+# Sprint 01 Retrospective
 
-At the end of the sprint, document:
+## What shipped
 
-* What went well.
-* Challenges encountered.
-* Technical decisions made.
-* Improvements for Sprint 02.
+- Go backend with Gin API, PostgreSQL, and migrations under `backend/`.
+- Auth (register/login/verify/logout/profile), project CRUD, members, blueprints/specs.
+- Materials, daily reports, BOQ, project documents, and newsletter endpoints.
+- Next.js frontend with auth flows and project dashboard pages (list/detail/tabs, team, materials, reports).
+- Storage abstraction for documents and initial CI/docs hardening.
 
-This retrospective helps improve future development and keeps the project evolving in a structured way.
+## What changed from plan
+
+- The stack diverged from the original plan: Gin API + Next.js frontend replaced `net/http` + HTML templates.
+- Project structure evolved to `backend/cmd/api`, `backend/internal/*`, `backend/db/migrations`, and `frontend/`.
+- Scope expanded beyond foundation into core MVP domain endpoints and initial frontend UI.
+
+## Lessons learned
+
+- Keep docs and decision records updated as architecture changes; drift made onboarding harder.
+- Add tests and access control early; retrofitting them is more work.
+- Small, issue-scoped commits make review and recovery easier.
+
+## Improvements carried into Sprint 02
+
+- Prioritize P0/P1 security, tests, and CI.
+- Complete core project-detail frontend flows (BOQ, documents).
+- Improve deployment readiness (Docker/object storage/email verification).
  

@@ -6,6 +6,7 @@ type Repository interface {
 	CreateProject(ctx context.Context, project *Project) error
 	GetProjectByID(ctx context.Context, id string) (*Project, error)
 	ListProjectsByOwner(ctx context.Context, ownerID string) ([]*Project, error)
+	ListProjectsByUser(ctx context.Context, userID string) ([]*Project, error)
 	ListAllProjects(ctx context.Context) ([]*Project, error)
 	UpdateProject(ctx context.Context, project *Project) error
 	DeleteProject(ctx context.Context, id string) error

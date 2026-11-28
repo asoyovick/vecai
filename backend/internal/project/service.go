@@ -63,7 +63,7 @@ func (s *Service) ListProjectsByOwner(ctx context.Context, ownerID string) ([]*P
 // ListProjects returns all projects visible to the given user: projects they
 // own plus projects they are a team member of.
 func (s *Service) ListProjects(ctx context.Context, userID string) ([]*Project, error) {
-	return s.repo.ListProjectsByOwner(ctx, userID)
+	return s.repo.ListProjectsByUser(ctx, userID)
 }
 
 // UpdateProject applies a partial update to an existing project.

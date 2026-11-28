@@ -65,6 +65,17 @@ func (r *PostgresRepository) ListProjectsByOwner(ctx context.Context, ownerID st
 	return r.queryProjects(ctx, query, ownerID)
 }
 
+func (r *PostgresRepository) ListProjectsByUser(ctx context.Context, userID string) ([]*Project, error) {
+	query := `SELECT ` + projectColumns + ` FROM projects p
+		WHERE p.owner_id = $1
+		   OR EXISTS (
+			SELECT 1 FROM project_members pm
+			WHERE pm.project_id = p.id AND pm.user_id::text = $1
+		   )
+		ORDER BY p.created_at DESC`
+	return r.queryProjects(ctx, query, userID)
+}
+
 func (r *PostgresRepository) ListAllProjects(ctx context.Context) ([]*Project, error) {
 	query := `SELECT ` + projectColumns + ` FROM projects ORDER BY created_at DESC`
 	return r.queryProjects(ctx, query)

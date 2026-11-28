@@ -19,6 +19,15 @@ import {
   removeProjectMember,
   type ProjectMember,
 } from "@/lib/members";
+import {
+  createMaterial,
+  deleteMaterial,
+  getMaterialsSummary,
+  listMaterials,
+  updateMaterial,
+  type Material,
+  type MaterialSummary,
+} from "@/lib/materials";
 
 const inputClasses =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#F28500] focus:ring-2 focus:ring-[#F28500]/20";
@@ -43,6 +52,10 @@ export default function ProjectDetailPage() {
   const [memberError, setMemberError] = useState<string | null>(null);
   const [inviteUserId, setInviteUserId] = useState("");
   const [inviteRole, setInviteRole] = useState("engineer");
+  const [materials, setMaterials] = useState<Material[] | null>(null);
+  const [materialsSummary, setMaterialsSummary] = useState<MaterialSummary | null>(null);
+  const [materialsLoading, setMaterialsLoading] = useState(false);
+  const [materialError, setMaterialError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +102,9 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     if (activeTab === "team" && project) {
       loadMembers();
+    }
+    if (activeTab === "materials" && project) {
+      loadMaterials();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, project?.id]);
@@ -152,6 +168,25 @@ export default function ProjectDetailPage() {
       setMemberError(err instanceof ApiError ? err.message : "Failed to load members.");
     } finally {
       setMembersLoading(false);
+    }
+  }
+
+  async function loadMaterials() {
+    if (!project) return;
+    setMaterialsLoading(true);
+    setMaterialError(null);
+    try {
+      const token = getToken()!;
+      const [items, summary] = await Promise.all([
+        listMaterials(token, project.id),
+        getMaterialsSummary(token, project.id),
+      ]);
+      setMaterials(items);
+      setMaterialsSummary(summary);
+    } catch (err) {
+      setMaterialError(err instanceof ApiError ? err.message : "Failed to load materials.");
+    } finally {
+      setMaterialsLoading(false);
     }
   }
 
@@ -404,7 +439,60 @@ export default function ProjectDetailPage() {
           )}
           {activeTab === "materials" && (
             <div>
-              <p className="text-sm text-slate-500">Materials tracking UI (issue #11) will be shown here.</p>
+              <h3 className="text-lg font-bold text-[#000080] mb-4">Materials</h3>
+              {materialError && (
+                <p role="alert" className="mb-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+                  {materialError}
+                </p>
+              )}
+              {materialsSummary && (
+                <div className="mb-6 grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Total items</p>
+                    <p className="text-xl font-bold text-slate-800">{materialsSummary.total_items ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Total quantity</p>
+                    <p className="text-xl font-bold text-slate-800">{materialsSummary.total_quantity ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Total cost</p>
+                    <p className="text-xl font-bold text-slate-800">{materialsSummary.total_cost ?? 0}</p>
+                  </div>
+                </div>
+              )}
+              {materialsLoading && <p className="text-sm text-slate-500">Loading materials…</p>}
+              {!materialsLoading && materials && materials.length === 0 && (
+                <p className="text-sm text-slate-500">No materials recorded yet.</p>
+              )}
+              {!materialsLoading && materials && materials.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-slate-500 border-b">
+                        <th className="py-2 pr-4">Name</th>
+                        <th className="py-2 pr-4">Qty</th>
+                        <th className="py-2 pr-4">Unit</th>
+                        <th className="py-2 pr-4">Unit cost</th>
+                        <th className="py-2 pr-4">Supplier</th>
+                        <th className="py-2 pr-4">Delivery date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {materials.map((m) => (
+                        <tr key={m.id} className="border-b border-slate-100">
+                          <td className="py-2 pr-4 font-medium text-slate-800">{m.material_name}</td>
+                          <td className="py-2 pr-4">{m.quantity}</td>
+                          <td className="py-2 pr-4">{m.unit}</td>
+                          <td className="py-2 pr-4">{m.unit_cost}</td>
+                          <td className="py-2 pr-4">{m.supplier || "—"}</td>
+                          <td className="py-2 pr-4">{m.delivery_date || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
           {activeTab === "boq" && (

@@ -2,72 +2,53 @@
 
 ## Purpose
 
-This document defines the REST API for VECAI (Victoria Eagles Construct AI).
+This document defines the HTTP API exposed by the VECAI backend.
 
-The API enables communication between the frontend, mobile applications, and the backend server.
-
-The MVP follows REST principles and exchanges data using JSON.
+The backend is a Go/Gin JSON API. The Next.js frontend and future clients communicate with it over HTTP.
 
 ---
 
-# Base URL
+## Base URL
 
-Development
+Development default:
 
 ```text
 http://localhost:8080/api/v1
 ```
 
-Production
+Health check (outside `/api/v1`):
 
 ```text
-https://api.vecai.com/api/v1
+GET /health
 ```
 
 ---
 
-# API Principles
+## API Principles
 
-* RESTful endpoints
 * JSON request and response bodies
-* Stateless communication
-* Role-based authorization
-* Meaningful HTTP status codes
-* Consistent naming conventions
+* Resource-oriented routes under `/api/v1`
+* JWT bearer authentication for protected operations
+* Server-side validation and authorization
+* Consistent response envelope
 
 ---
 
-# Authentication
+## Authentication
 
-Most endpoints require authentication.
+Authentication uses JWTs. Clients obtain a token from auth endpoints and send it as:
 
-Authentication will initially use secure server-side sessions.
+```text
+Authorization: Bearer <token>
+```
 
-Future versions may introduce JWTs for mobile applications and third-party integrations.
-
----
-
-# User Roles
-
-The API supports role-based access.
-
-Roles include:
-
-* Administrator
-* Contractor
-* Site Engineer
-* Quantity Surveyor
-* Architect
-* Supplier
-* Client
-
-Permissions are enforced on the server.
+The API also uses optional auth middleware on the `/api/v1` group; individual handlers enforce authentication/authorization as needed.
 
 ---
 
-# Standard Response Format
+## Standard Response Format
 
-Successful response
+Success:
 
 ```json
 {
@@ -77,543 +58,163 @@ Successful response
 }
 ```
 
-Error response
+Error:
 
 ```json
 {
   "success": false,
-  "message": "Project not found"
+  "error": "Project not found"
 }
 ```
 
----
-
-# Authentication Endpoints
-
-## Register User
-
-### POST
-
-```text
-/auth/register
-```
-
-Request
-
-```json
-{
-  "name": "Victor Ouma",
-  "email": "victor@example.com",
-  "password": "password123"
-}
-```
-
-Response
-
-```json
-{
-  "success": true,
-  "message": "Account created successfully"
-}
-```
+Some handlers may include `message`; clients should handle `success`, `message`, `data`, and `error`.
 
 ---
 
-## Login
+## Implemented Endpoints
 
-### POST
+### Health
 
-```text
-/auth/login
-```
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/health` | Service health check |
 
-Request
+### Auth
 
-```json
-{
-  "email": "victor@example.com",
-  "password": "password123"
-}
-```
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | Register a user |
+| POST | `/api/v1/auth/login` | Login and receive auth token/session response |
+| POST | `/api/v1/auth/verify` | Verify account/token flow |
+| POST | `/api/v1/auth/logout` | Logout (client-side token discard; JWT is stateless) |
 
----
+### Current User
 
-## Logout
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/v1/users/me` | Get current authenticated user |
+| PUT | `/api/v1/users/me` | Update current user profile |
 
-### POST
+### Projects
 
-```text
-/auth/logout
-```
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects` | Create project |
+| GET | `/api/v1/projects` | List projects |
+| GET | `/api/v1/projects/:id` | Get project by ID |
+| PUT | `/api/v1/projects/:id` | Update project |
+| DELETE | `/api/v1/projects/:id` | Delete project |
 
----
+### Project Members
 
-# User Endpoints
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects/:id/members` | Invite/add project member |
+| GET | `/api/v1/projects/:id/members` | List project members |
+| DELETE | `/api/v1/projects/:id/members/:memberId` | Remove project member |
 
-## Get Current User
+### Project Blueprints
 
-### GET
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects/:id/blueprints` | Add blueprint metadata |
+| GET | `/api/v1/projects/:id/blueprints` | List blueprints |
 
-```text
-/users/me
-```
+### Project Specs
 
----
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects/:id/specs` | Add spec |
+| GET | `/api/v1/projects/:id/specs` | List specs |
 
-## Update Profile
+### Materials
 
-### PUT
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects/:id/materials` | Record material delivery |
+| GET | `/api/v1/projects/:id/materials` | List materials |
+| GET | `/api/v1/projects/:id/materials/summary` | Material summary |
+| PUT | `/api/v1/projects/:id/materials/:materialId` | Update material record |
+| DELETE | `/api/v1/projects/:id/materials/:materialId` | Delete material record |
 
-```text
-/users/me
-```
+### Daily Reports
 
----
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects/:id/reports` | Create daily report |
+| GET | `/api/v1/projects/:id/reports` | List daily reports |
+| GET | `/api/v1/projects/:id/reports/summary` | Reports summary |
+| GET | `/api/v1/projects/:id/reports/:reportId` | Get daily report |
+| DELETE | `/api/v1/projects/:id/reports/:reportId` | Delete daily report |
 
-# Project Endpoints
+### BOQ
 
-## Create Project
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects/:id/boq` | Create BOQ item |
+| GET | `/api/v1/projects/:id/boq` | List BOQ items |
+| GET | `/api/v1/projects/:id/boq/compare` | Compare estimated vs actual BOQ costs |
+| PUT | `/api/v1/projects/:id/boq/:itemId` | Update BOQ item |
+| DELETE | `/api/v1/projects/:id/boq/:itemId` | Delete BOQ item |
 
-### POST
+### Documents
 
-```text
-/projects
-```
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects/:id/documents` | Upload project document (multipart/form-data) |
+| GET | `/api/v1/projects/:id/documents` | List project documents |
+| GET | `/api/v1/projects/:id/documents/:documentId` | Download document |
+| DELETE | `/api/v1/projects/:id/documents/:documentId` | Delete document |
 
-Request
+### Newsletter
 
-```json
-{
-  "name": "Residential Apartments",
-  "location": "Kisumu",
-  "start_date": "2026-07-01",
-  "end_date": "2027-03-30"
-}
-```
-
----
-
-## Get All Projects
-
-### GET
-
-```text
-/projects
-```
-
----
-
-## Get Project
-
-### GET
-
-```text
-/projects/{id}
-```
-
----
-
-## Update Project
-
-### PUT
-
-```text
-/projects/{id}
-```
-
----
-
-## Delete Project
-
-### DELETE
-
-```text
-/projects/{id}
-```
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/newsletter/subscribe` | Subscribe email to newsletter |
 
 ---
 
-# Team Management
+## Planned / Not Yet Implemented
 
-## Invite Team Member
+The following endpoints/features appear in earlier design docs or roadmap but are not implemented in the current API:
 
-### POST
+* Suppliers CRUD (`/suppliers`)
+* Quotations and quotation comparison (`/projects/:id/quotations`)
+* Project dashboard aggregate endpoint (`/dashboard/projects/:id`)
+* Notifications, timeline/activity, search
+* AI endpoints (`/projects/:id/ai/*`)
+
+---
+
+## HTTP Status Codes
+
+| Code | Meaning |
+| --- | --- |
+| 200 | OK |
+| 201 | Created |
+| 204 | No Content / preflight response |
+| 400 | Bad Request / invalid input |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Not Found |
+| 409 | Conflict (e.g. duplicate unique value) |
+| 500 | Internal Server Error |
+
+---
+
+## CORS
+
+CORS is configured by `CORS_ALLOWED_ORIGINS` (comma-separated). Development defaults include:
 
 ```text
-/projects/{id}/members
+http://localhost:3000,http://localhost:8080
 ```
 
 ---
 
-## List Team Members
-
-### GET
-
-```text
-/projects/{id}/members
-```
-
----
-
-## Remove Team Member
-
-### DELETE
-
-```text
-/projects/{id}/members/{memberId}
-```
-
----
-
-# BOQ Endpoints
-
-## Upload BOQ
-
-### POST
-
-```text
-/projects/{id}/boq
-```
-
----
-
-## Retrieve BOQ
-
-### GET
-
-```text
-/projects/{id}/boq
-```
-
----
-
-## Update BOQ
-
-### PUT
-
-```text
-/projects/{id}/boq
-```
-
----
-
-# Material Tracking
-
-## Record Material Delivery
-
-### POST
-
-```text
-/projects/{id}/materials
-```
-
-Example
-
-```json
-{
-  "material": "Cement",
-  "quantity": 200,
-  "unit": "Bags"
-}
-```
-
----
-
-## Get Material Records
-
-### GET
-
-```text
-/projects/{id}/materials
-```
-
----
-
-## Update Material Record
-
-### PUT
-
-```text
-/projects/{id}/materials/{materialId}
-```
-
----
-
-# Daily Reports
-
-## Create Daily Report
-
-### POST
-
-```text
-/projects/{id}/reports
-```
-
-Example
-
-```json
-{
-  "date": "2026-07-05",
-  "workers": 18,
-  "completed_work": "Foundation excavation completed",
-  "remarks": "No delays"
-}
-```
-
----
-
-## List Daily Reports
-
-### GET
-
-```text
-/projects/{id}/reports
-```
-
----
-
-## Get Daily Report
-
-### GET
-
-```text
-/projects/{id}/reports/{reportId}
-```
-
----
-
-# Document Management
-
-## Upload Document
-
-### POST
-
-```text
-/projects/{id}/documents
-```
-
----
-
-## List Documents
-
-### GET
-
-```text
-/projects/{id}/documents
-```
-
----
-
-## Download Document
-
-### GET
-
-```text
-/projects/{id}/documents/{documentId}
-```
-
----
-
-## Delete Document
-
-### DELETE
-
-```text
-/projects/{id}/documents/{documentId}
-```
-
----
-
-# Supplier Endpoints
-
-## Register Supplier
-
-### POST
-
-```text
-/suppliers
-```
-
----
-
-## List Suppliers
-
-### GET
-
-```text
-/suppliers
-```
-
----
-
-## Get Supplier
-
-### GET
-
-```text
-/suppliers/{id}
-```
-
----
-
-# Quotation Endpoints
-
-## Submit Quotation
-
-### POST
-
-```text
-/projects/{id}/quotations
-```
-
----
-
-## List Quotations
-
-### GET
-
-```text
-/projects/{id}/quotations
-```
-
----
-
-## Compare Quotations
-
-### GET
-
-```text
-/projects/{id}/quotations/compare
-```
-
----
-
-# Dashboard
-
-## Project Dashboard
-
-### GET
-
-```text
-/dashboard/projects/{id}
-```
-
-Returns project summary including:
-
-* Progress
-* Material usage
-* Daily reports
-* Active workers
-* Recent activity
-
----
-
-# Future AI Endpoints
-
-These endpoints are planned for future releases.
-
-Material Prediction
-
-```text
-GET /projects/{id}/ai/material-forecast
-```
-
-Cost Forecast
-
-```text
-GET /projects/{id}/ai/cost-forecast
-```
-
-Productivity Analysis
-
-```text
-GET /projects/{id}/ai/productivity
-```
-
-Risk Detection
-
-```text
-GET /projects/{id}/ai/risk-analysis
-```
-
----
-
-# HTTP Status Codes
-
-| Code | Meaning               |
-| ---- | --------------------- |
-| 200  | OK                    |
-| 201  | Created               |
-| 204  | No Content            |
-| 400  | Bad Request           |
-| 401  | Unauthorized          |
-| 403  | Forbidden             |
-| 404  | Not Found             |
-| 409  | Conflict              |
-| 422  | Validation Error      |
-| 500  | Internal Server Error |
-
----
-
-# API Versioning
-
-All endpoints include an API version.
-
-Example
-
-```text
-/api/v1/projects
-```
-
-Future versions will use:
-
-```text
-/api/v2/
-```
-
-without breaking existing clients.
-
----
-
-# Security
-
-The API will implement:
-
-* HTTPS in production
-* Password hashing
-* Session authentication
-* Role-based authorization
-* Input validation
-* SQL injection protection
-* CSRF protection for web forms
-* Rate limiting (future)
-
----
-
-# API Design Guidelines
-
-The API follows these conventions:
-
-* Resource names use plural nouns (`/projects`, `/users`, `/suppliers`).
-* HTTP methods define the action.
-* URLs identify resources, not actions.
-* JSON is used for request and response payloads.
-* Error responses are descriptive but do not expose sensitive system information.
-* Breaking API changes require a new version.
-
----
-
-# MVP Scope
-
-The first release of VECAI will implement:
-
-* Authentication
-* User management
-* Project management
-* Team management
-* BOQ management
-* Material tracking
-* Daily reports
-* Document management
-
-Supplier management, quotation comparison, dashboards, and AI-powered endpoints are planned for later releases.
+## Security Notes
+
+* Use HTTPS in production.
+* Keep JWT secrets configured via environment (`JWT_SECRET`).
+* Do not expose database errors or internal details to clients.
+* Validate and authorize every project-scoped request.

@@ -45,7 +45,7 @@ func main() {
 		log.Fatalf("[FATAL] Migration failed: %v", err)
 	}
 
-	// ---- Domain modules (modular monolith, docs/architechture.md) ----
+	// ---- Domain modules (modular monolith, docs/architecture.md) ----
 	userRepo := auth.NewPostgresUserRepository(dbConn)
 	authService := auth.NewService(userRepo)
 	authHandler := auth.NewHandler(authService)

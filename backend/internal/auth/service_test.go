@@ -4,14 +4,25 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 type fakeUserRepo struct {
-	users map[string]User
+	users  map[string]User
+	tokens map[string]struct {
+		hash      string
+		expiresAt time.Time
+	}
 }
 
 func newFakeUserRepo() *fakeUserRepo {
-	return &fakeUserRepo{users: map[string]User{}}
+	return &fakeUserRepo{
+		users: map[string]User{},
+		tokens: map[string]struct {
+			hash      string
+			expiresAt time.Time
+		}{},
+	}
 }
 
 func (f *fakeUserRepo) CreateUser(_ context.Context, user User) error {
@@ -56,6 +67,27 @@ func (f *fakeUserRepo) UpdateVerificationStatus(_ context.Context, email string,
 	f.users[email] = u
 	return nil
 }
+func (f *fakeUserRepo) SetVerificationToken(_ context.Context, email, tokenHash string, expiresAt time.Time) error {
+	if _, ok := f.users[email]; !ok {
+		return errors.New("not found")
+	}
+	f.tokens[email] = struct {
+		hash      string
+		expiresAt time.Time
+	}{hash: tokenHash, expiresAt: expiresAt}
+	return nil
+}
+func (f *fakeUserRepo) GetVerificationToken(_ context.Context, email string) (string, time.Time, error) {
+	t, ok := f.tokens[email]
+	if !ok {
+		return "", time.Time{}, errors.New("no token")
+	}
+	return t.hash, t.expiresAt, nil
+}
+func (f *fakeUserRepo) ClearVerificationToken(_ context.Context, email string) error {
+	delete(f.tokens, email)
+	return nil
+}
 
 func TestValidateRegister(t *testing.T) {
 	tests := []struct {
@@ -90,6 +122,9 @@ func TestLogin_WrongPasswordAndUnknownEmailReturnSameError(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("register: %v", err)
+	}
+	if err := repo.UpdateVerificationStatus(context.Background(), "known@example.com", true); err != nil {
+		t.Fatalf("verify: %v", err)
 	}
 
 	_, errUnknown := svc.Login(context.Background(), LoginRequest{Email: "unknown@example.com", Password: "password123"})

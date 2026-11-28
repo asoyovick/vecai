@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/lib/pq"
 )
@@ -22,11 +23,11 @@ func NewPostgresUserRepository(db *sql.DB) *PostgresUserRepository {
 
 func (r *PostgresUserRepository) CreateUser(ctx context.Context, user User) error {
 	query := `
-		INSERT INTO users (id, name, email, password_hash, role, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO users (id, name, email, password_hash, role, is_verified, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 	_, err := r.db.ExecContext(ctx, query,
-		user.ID, user.Fullname, user.Email, user.PasswordHash, string(user.Role), user.CreatedAt,
+		user.ID, user.Fullname, user.Email, user.PasswordHash, string(user.Role), user.IsVerified, user.CreatedAt,
 	)
 	if err != nil {
 		var pqErr *pq.Error
@@ -101,4 +102,42 @@ func (r *PostgresUserRepository) UpdateVerificationStatus(ctx context.Context, e
 		return ErrUserNotFound
 	}
 	return nil
+}
+
+func (r *PostgresUserRepository) SetVerificationToken(ctx context.Context, email, tokenHash string, expiresAt time.Time) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE users SET verification_token_hash = $2, verification_token_expires_at = $3 WHERE email = $1
+	`, email, tokenHash, expiresAt)
+	if err != nil {
+		return err
+	}
+	if rows, err := result.RowsAffected(); err == nil && rows == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+func (r *PostgresUserRepository) GetVerificationToken(ctx context.Context, email string) (string, time.Time, error) {
+	var hash sql.NullString
+	var expires sql.NullTime
+	err := r.db.QueryRowContext(ctx, `
+		SELECT verification_token_hash, verification_token_expires_at FROM users WHERE email = $1
+	`, email).Scan(&hash, &expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", time.Time{}, ErrUserNotFound
+	}
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	if !hash.Valid || !expires.Valid {
+		return "", time.Time{}, errors.New("no verification token set")
+	}
+	return hash.String, expires.Time, nil
+}
+
+func (r *PostgresUserRepository) ClearVerificationToken(ctx context.Context, email string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE users SET verification_token_hash = NULL, verification_token_expires_at = NULL WHERE email = $1
+	`, email)
+	return err
 }

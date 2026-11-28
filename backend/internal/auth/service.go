@@ -2,7 +2,13 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +26,9 @@ type UserRepository interface {
 	GetUserByID(ctx context.Context, id string) (User, error)
 	UpdateProfile(ctx context.Context, id, fullname, phone string) error
 	UpdateVerificationStatus(ctx context.Context, email string, isVerified bool) error
+	SetVerificationToken(ctx context.Context, email, tokenHash string, expiresAt time.Time) error
+	GetVerificationToken(ctx context.Context, email string) (tokenHash string, expiresAt time.Time, err error)
+	ClearVerificationToken(ctx context.Context, email string) error
 }
 
 type Service struct {
@@ -51,7 +60,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthRespon
 		Fullname:     req.Fullname,
 		Role:         req.Role,
 		Phone:        req.Phone,
-		IsVerified:   true, // MVP: verification flow lands in a later sprint.
+		IsVerified:   false,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -59,12 +68,19 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (AuthRespon
 		return AuthResponse{}, err
 	}
 
-	token, err := GenerateToken(user)
+	rawToken, tokenHash, err := generateVerificationToken()
 	if err != nil {
 		return AuthResponse{}, err
 	}
+	expiresAt := time.Now().UTC().Add(24 * time.Hour)
+	if err := s.repo.SetVerificationToken(ctx, user.Email, tokenHash, expiresAt); err != nil {
+		return AuthResponse{}, err
+	}
 
-	return AuthResponse{Token: token, User: user}, nil
+	// Real flow: send email. Default delivery logs token for dev/test environments.
+	log.Printf("[AUTH] Verification token for %s: %s (expires %s)", user.Email, rawToken, expiresAt.Format(time.RFC3339))
+
+	return AuthResponse{Token: "", User: user}, nil
 }
 
 func (s *Service) Login(ctx context.Context, req LoginRequest) (AuthResponse, error) {
@@ -115,16 +131,28 @@ func (s *Service) UpdateProfile(ctx context.Context, userID, fullname, phone str
 }
 
 func (s *Service) Verify(ctx context.Context, req VerifyRequest) (AuthResponse, error) {
-	// Simple mock verification loop check: we'll automatically pass if token is "123456"
-	if req.Token != "123456" {
+	email := normalizeEmail(req.Email)
+	if email == "" || strings.TrimSpace(req.Token) == "" {
+		return AuthResponse{}, errors.New("email and verification token are required")
+	}
+
+	hash, expiresAt, err := s.repo.GetVerificationToken(ctx, email)
+	if err != nil {
+		return AuthResponse{}, errors.New("invalid or expired verification code sequence")
+	}
+	if time.Now().UTC().After(expiresAt) {
+		return AuthResponse{}, errors.New("invalid or expired verification code sequence")
+	}
+	if hashVerificationToken(req.Token) != hash {
 		return AuthResponse{}, errors.New("invalid or expired verification code sequence")
 	}
 
-	if err := s.repo.UpdateVerificationStatus(ctx, req.Email, true); err != nil {
+	if err := s.repo.UpdateVerificationStatus(ctx, email, true); err != nil {
 		return AuthResponse{}, err
 	}
+	_ = s.repo.ClearVerificationToken(ctx, email)
 
-	user, err := s.repo.GetUserByEmail(ctx, req.Email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return AuthResponse{}, err
 	}
@@ -135,4 +163,18 @@ func (s *Service) Verify(ctx context.Context, req VerifyRequest) (AuthResponse, 
 	}
 
 	return AuthResponse{Token: token, User: user}, nil
+}
+
+func generateVerificationToken() (raw string, hash string, err error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", "", fmt.Errorf("generate verification token: %w", err)
+	}
+	raw = hex.EncodeToString(b)
+	return raw, hashVerificationToken(raw), nil
+}
+
+func hashVerificationToken(raw string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(raw)))
+	return hex.EncodeToString(sum[:])
 }

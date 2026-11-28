@@ -172,6 +172,18 @@ func (s *Service) GetSpecsByProject(ctx context.Context, projectID string) ([]*S
 	return s.repo.GetSpecsByProject(ctx, projectID)
 }
 
+// HasAccess reports whether userID can access projectID as owner or member.
+func (s *Service) HasAccess(ctx context.Context, projectID, userID string) (bool, error) {
+	p, err := s.repo.GetProjectByID(ctx, projectID)
+	if err != nil {
+		return false, err
+	}
+	if p.OwnerID == userID {
+		return true, nil
+	}
+	return s.repo.IsMember(ctx, projectID, userID)
+}
+
 // InviteMember adds a user to a project team with the given role.
 func (s *Service) InviteMember(ctx context.Context, projectID string, req InviteMemberRequest) (*Member, error) {
 	if strings.TrimSpace(req.UserID) == "" {

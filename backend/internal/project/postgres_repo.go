@@ -278,6 +278,15 @@ func (r *PostgresRepository) GetMemberByID(ctx context.Context, projectID, membe
 	return scanMember(r.db.QueryRowContext(ctx, query, projectID, memberID))
 }
 
+func (r *PostgresRepository) IsMember(ctx context.Context, projectID, userID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM project_members WHERE project_id = $1 AND user_id::text = $2)`,
+		projectID, userID,
+	).Scan(&exists)
+	return exists, err
+}
+
 func (r *PostgresRepository) DeleteMember(ctx context.Context, projectID, memberID string) error {
 	result, err := r.db.ExecContext(ctx, `DELETE FROM project_members WHERE project_id = $1 AND id = $2`, projectID, memberID)
 	if err != nil {

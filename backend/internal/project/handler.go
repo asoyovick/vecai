@@ -121,6 +121,9 @@ func (h *Handler) ListProjects(c *gin.Context) {
 }
 
 func (h *Handler) GetProjectByID(c *gin.Context) {
+	if _, ok := h.requireAccess(c); !ok {
+		return
+	}
 	found, err := h.service.GetProjectByID(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		h.handleError(c, err)
@@ -131,6 +134,9 @@ func (h *Handler) GetProjectByID(c *gin.Context) {
 }
 
 func (h *Handler) UpdateProject(c *gin.Context) {
+	if _, ok := h.requireOwner(c); !ok {
+		return
+	}
 	var req UpdateRequest
 	if !api.BindJSON(c, &req) {
 		return
@@ -146,6 +152,9 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 }
 
 func (h *Handler) DeleteProject(c *gin.Context) {
+	if _, ok := h.requireOwner(c); !ok {
+		return
+	}
 	err := h.service.DeleteProject(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		h.handleError(c, err)
@@ -156,6 +165,9 @@ func (h *Handler) DeleteProject(c *gin.Context) {
 }
 
 func (h *Handler) InviteMember(c *gin.Context) {
+	if _, ok := h.requireOwner(c); !ok {
+		return
+	}
 	var req InviteMemberRequest
 	if !api.BindJSON(c, &req) {
 		return
@@ -171,6 +183,9 @@ func (h *Handler) InviteMember(c *gin.Context) {
 }
 
 func (h *Handler) GetMembersByProject(c *gin.Context) {
+	if _, ok := h.requireAccess(c); !ok {
+		return
+	}
 	members, err := h.service.GetMembersByProject(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		api.Fail(c, http.StatusInternalServerError, "internal server error")
@@ -181,6 +196,9 @@ func (h *Handler) GetMembersByProject(c *gin.Context) {
 }
 
 func (h *Handler) RemoveMember(c *gin.Context) {
+	if _, ok := h.requireOwner(c); !ok {
+		return
+	}
 	err := h.service.RemoveMember(c.Request.Context(), c.Param("id"), c.Param("memberId"))
 	if err != nil {
 		if errors.Is(err, ErrMemberNotFound) {
@@ -195,9 +213,8 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 }
 
 func (h *Handler) AddBlueprint(c *gin.Context) {
-	userID, ok := auth.UserIDFromContext(c)
+	userID, ok := h.requireAccess(c)
 	if !ok {
-		api.Fail(c, http.StatusUnauthorized, "authentication required")
 		return
 	}
 
@@ -216,6 +233,9 @@ func (h *Handler) AddBlueprint(c *gin.Context) {
 }
 
 func (h *Handler) GetBlueprintsByProject(c *gin.Context) {
+	if _, ok := h.requireAccess(c); !ok {
+		return
+	}
 	blueprints, err := h.service.GetBlueprintsByProject(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		api.Fail(c, http.StatusInternalServerError, "internal server error")
@@ -226,9 +246,8 @@ func (h *Handler) GetBlueprintsByProject(c *gin.Context) {
 }
 
 func (h *Handler) AddSpec(c *gin.Context) {
-	userID, ok := auth.UserIDFromContext(c)
+	userID, ok := h.requireAccess(c)
 	if !ok {
-		api.Fail(c, http.StatusUnauthorized, "authentication required")
 		return
 	}
 
@@ -247,6 +266,9 @@ func (h *Handler) AddSpec(c *gin.Context) {
 }
 
 func (h *Handler) GetSpecsByProject(c *gin.Context) {
+	if _, ok := h.requireAccess(c); !ok {
+		return
+	}
 	specs, err := h.service.GetSpecsByProject(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		api.Fail(c, http.StatusInternalServerError, "internal server error")
@@ -265,7 +287,45 @@ func (h *Handler) handleError(c *gin.Context, err error) {
 		api.Fail(c, http.StatusConflict, "user is already a member of this project")
 	case errors.Is(err, ErrInvalidInput):
 		api.Fail(c, http.StatusBadRequest, err.Error())
+	case errors.Is(err, ErrUnauthorized):
+		api.Fail(c, http.StatusForbidden, "access denied")
 	default:
 		api.Fail(c, http.StatusInternalServerError, "internal server error")
 	}
+}
+
+func (h *Handler) requireAccess(c *gin.Context) (string, bool) {
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
+		return "", false
+	}
+	allowed, err := h.service.HasAccess(c.Request.Context(), c.Param("id"), userID)
+	if err != nil {
+		h.handleError(c, err)
+		return "", false
+	}
+	if !allowed {
+		api.Fail(c, http.StatusForbidden, "access denied")
+		return "", false
+	}
+	return userID, true
+}
+
+func (h *Handler) requireOwner(c *gin.Context) (string, bool) {
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		api.Fail(c, http.StatusUnauthorized, "authentication required")
+		return "", false
+	}
+	p, err := h.service.GetProjectByID(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		h.handleError(c, err)
+		return "", false
+	}
+	if p.OwnerID != userID {
+		api.Fail(c, http.StatusForbidden, "access denied")
+		return "", false
+	}
+	return userID, true
 }

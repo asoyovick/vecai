@@ -28,6 +28,14 @@ import {
   type Material,
   type MaterialSummary,
 } from "@/lib/materials";
+import {
+  createReport,
+  deleteReport,
+  getReportSummary,
+  listReports,
+  type DailyReport,
+  type ReportSummary,
+} from "@/lib/reports";
 
 const inputClasses =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#F28500] focus:ring-2 focus:ring-[#F28500]/20";
@@ -56,6 +64,17 @@ export default function ProjectDetailPage() {
   const [materialsSummary, setMaterialsSummary] = useState<MaterialSummary | null>(null);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [materialError, setMaterialError] = useState<string | null>(null);
+  const [reports, setReports] = useState<DailyReport[] | null>(null);
+  const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportForm, setReportForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    completed_work: "",
+    workers: "0",
+    remarks: "",
+  });
+  const [savingReport, setSavingReport] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +124,9 @@ export default function ProjectDetailPage() {
     }
     if (activeTab === "materials" && project) {
       loadMaterials();
+    }
+    if (activeTab === "reports" && project) {
+      loadReports();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, project?.id]);
@@ -187,6 +209,65 @@ export default function ProjectDetailPage() {
       setMaterialError(err instanceof ApiError ? err.message : "Failed to load materials.");
     } finally {
       setMaterialsLoading(false);
+    }
+  }
+
+  async function loadReports() {
+    if (!project) return;
+    setReportsLoading(true);
+    setReportError(null);
+    try {
+      const token = getToken()!;
+      const [items, summary] = await Promise.all([
+        listReports(token, project.id),
+        getReportSummary(token, project.id),
+      ]);
+      setReports(items);
+      setReportSummary(summary);
+    } catch (err) {
+      setReportError(err instanceof ApiError ? err.message : "Failed to load reports.");
+    } finally {
+      setReportsLoading(false);
+    }
+  }
+
+  async function handleCreateReport(e: React.FormEvent) {
+    e.preventDefault();
+    if (!project) return;
+    setSavingReport(true);
+    setReportError(null);
+    try {
+      const token = getToken()!;
+      await createReport(token, project.id, {
+        date: reportForm.date,
+        completed_work: reportForm.completed_work,
+        workers: Number(reportForm.workers) || 0,
+        remarks: reportForm.remarks || undefined,
+      });
+      setReportForm({
+        date: new Date().toISOString().slice(0, 10),
+        completed_work: "",
+        workers: "0",
+        remarks: "",
+      });
+      await loadReports();
+    } catch (err) {
+      setReportError(err instanceof ApiError ? err.message : "Failed to create report.");
+    } finally {
+      setSavingReport(false);
+    }
+  }
+
+  async function handleDeleteReport(reportId: string) {
+    if (!project) return;
+    if (!confirm("Delete this daily report?")) return;
+    setReportError(null);
+    try {
+      const token = getToken()!;
+      await deleteReport(token, project.id, reportId);
+      await loadReports();
+    } catch (err) {
+      setReportError(err instanceof ApiError ? err.message : "Failed to delete report.");
     }
   }
 
@@ -502,7 +583,111 @@ export default function ProjectDetailPage() {
           )}
           {activeTab === "reports" && (
             <div>
-              <p className="text-sm text-slate-500">Daily reports UI (issue #12 frontend, #18 in list) will be shown here.</p>
+              <h3 className="text-lg font-bold text-[#000080] mb-4">Daily reports</h3>
+              {reportError && (
+                <p role="alert" className="mb-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+                  {reportError}
+                </p>
+              )}
+
+              {reportSummary && (
+                <div className="mb-6 grid gap-4 sm:grid-cols-4">
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Total reports</p>
+                    <p className="text-xl font-bold text-slate-800">{reportSummary.total_reports}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Average workers</p>
+                    <p className="text-xl font-bold text-slate-800">{reportSummary.average_workers.toFixed(1)}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Peak workers</p>
+                    <p className="text-xl font-bold text-slate-800">{reportSummary.peak_workers}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Latest report</p>
+                    <p className="text-xl font-bold text-slate-800">{reportSummary.latest_report_date || "—"}</p>
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateReport} className="mb-6 grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Date</label>
+                  <input
+                    type="date"
+                    className={inputClasses}
+                    value={reportForm.date}
+                    onChange={(e) => setReportForm({ ...reportForm, date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Workers present</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className={inputClasses}
+                    value={reportForm.workers}
+                    onChange={(e) => setReportForm({ ...reportForm, workers: e.target.value })}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Completed work</label>
+                  <textarea
+                    className={inputClasses}
+                    rows={3}
+                    value={reportForm.completed_work}
+                    onChange={(e) => setReportForm({ ...reportForm, completed_work: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Remarks (optional)</label>
+                  <input
+                    className={inputClasses}
+                    value={reportForm.remarks}
+                    onChange={(e) => setReportForm({ ...reportForm, remarks: e.target.value })}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={savingReport}
+                    className="rounded-xl bg-[#F28500] px-4 py-2 text-sm font-semibold text-white hover:bg-[#d97706] disabled:opacity-50"
+                  >
+                    {savingReport ? "Saving…" : "Add report"}
+                  </button>
+                </div>
+              </form>
+
+              {reportsLoading && <p className="text-sm text-slate-500">Loading reports…</p>}
+              {!reportsLoading && reports && reports.length === 0 && (
+                <p className="text-sm text-slate-500">No daily reports yet.</p>
+              )}
+              {!reportsLoading && reports && reports.length > 0 && (
+                <div className="space-y-3">
+                  {reports.map((r) => (
+                    <div key={r.id} className="rounded-xl border border-slate-200 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium text-slate-800">{r.report_date}</p>
+                          <p className="text-sm text-slate-500">{r.workers_present} workers present</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReport(r.id)}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{r.completed_work}</p>
+                      {r.remarks && <p className="mt-1 text-sm text-slate-500">Remarks: {r.remarks}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {activeTab === "documents" && (

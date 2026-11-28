@@ -28,7 +28,7 @@ The API runs migrations on startup using `MIGRATIONS_PATH` (default in image: `/
    - `PORT` - provided by Render (the app already reads `PORT`)
    - `UPLOAD_DIR` - persistent disk mount path if using local uploads
 4. Migrations: run automatically on startup via `db.RunMigrations`.
-5. Uploads: local disk is ephemeral on Render unless a persistent disk is attached. Mount a disk and set `UPLOAD_DIR` to that mount path, or configure object storage (see #15 / storage config) before production use.
+5. Uploads: local disk is ephemeral on Render unless a persistent disk is attached. Mount a disk and set `UPLOAD_DIR` to that mount path, or configure S3-compatible object storage with `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT` (optional), `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`.
 
 ## Database backups
 

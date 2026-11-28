@@ -147,6 +147,8 @@ Project documentation lives in [`docs/`](docs/):
 * [sprint-01.md](docs/sprint-01.md) - Sprint 01 notes
 * [decisions.md](docs/decisions.md) - Architecture decision records
 * [coding-standards.md](docs/coding-standards.md) - Coding conventions
+* [testing.md](docs/testing.md) - Testing and coverage baseline
+* [deployment.md](docs/deployment.md) - Docker, Render deployment, and backups
 * [glossary.md](docs/glossary.md) - Domain glossary
 
 ---
